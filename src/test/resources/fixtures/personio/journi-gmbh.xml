@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SYNTHETIC FIXTURE: the live https://journi-gmbh.jobs.personio.de/xml?language=en feed
+  returned an empty <workzag-jobs/> at capture time (2026-08-05) -- Journi's careers page
+  confirms "No open positions". Hand-built from the real Personio XML schema so the
+  parser has a populated, representative document to test field extraction against.
+  See journi-gmbh.empty.xml for the real captured empty response.
+-->
+<workzag-jobs>
+  <position>
+    <id>2201155</id>
+    <name>Backend Engineer - JVM (all genders)</name>
+    <office>Vienna</office>
+    <department>Engineering</department>
+    <recruitingCategory>Software Development</recruitingCategory>
+    <employmentType>Permanent employment</employmentType>
+    <seniority>Mid-level</seniority>
+    <schedule>Full-time</schedule>
+    <yearsOfExperience>2 to 4 years</yearsOfExperience>
+    <keywords>Java, Kotlin, Scala, Spring Boot, AWS</keywords>
+    <occupation>Software Development</occupation>
+    <occupationCategory>Software Development</occupationCategory>
+    <createdAt>2026-07-20T10:00:00+02:00</createdAt>
+    <jobDescriptions>
+      <jobDescription>
+        <name>About the Role</name>
+        <value>&lt;p&gt;Journi is a Vienna-based travel-journaling app. Our backend runs on the &lt;b&gt;JVM&lt;/b&gt; -- mostly Kotlin and Java with Spring Boot, some Scala in the data pipeline. You'll build services that power our mobile apps.&lt;/p&gt;</value>
+      </jobDescription>
+      <jobDescription>
+        <name>What We Offer</name>
+        <value>&lt;p&gt;2-4 years of backend experience. We are an internationally distributed team and provide visa sponsorship and relocation support for candidates moving to Vienna.&lt;/p&gt;</value>
+      </jobDescription>
+    </jobDescriptions>
+  </position>
+</workzag-jobs>

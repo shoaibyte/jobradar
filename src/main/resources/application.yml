@@ -1,0 +1,183 @@
+spring:
+  application:
+    name: jobradar
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: jdbc:sqlite:./data/jobradar.db
+    driver-class-name: org.sqlite.JDBC
+  jpa:
+    open-in-view: false
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  health:
+    mail:
+      # Email notifications are disabled by default (app.notify.email.enabled=false),
+      # so a missing/unreachable SMTP server shouldn't drag down overall app health.
+      enabled: false
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    dev.shoaib.jobradar: INFO
+
+app:
+  # --app.run-once=true | --app.dry-run=true | --app.detect-ats=<url>
+  run-once: false
+  dry-run: false
+  detect-ats: ""
+  # Set to false only in test property sources -- keeps @SpringBootTest context loads
+  # from firing a real network ingest pass on every test run.
+  startup-run:
+    enabled: true
+  contact-email: ${JOBRADAR_CONTACT_EMAIL:jobradar-owner@example.com}
+  companies-file: file:config/companies.yml
+
+  schedule:
+    cron: "0 7 * * * *"
+
+  http:
+    user-agent: "JobRadar/1.0 (personal job-alert tool; contact: ${app.contact-email})"
+    per-host-min-interval-ms: 1500
+    connect-timeout-seconds: 10
+    read-timeout-seconds: 10
+    retry:
+      max-attempts: 3
+      initial-backoff-ms: 500
+      backoff-multiplier: 2.0
+    robots-txt:
+      enabled: true
+      cache-ttl-minutes: 60
+
+  sources:
+    arbeitnow:
+      enabled: true
+      base-url: https://www.arbeitnow.com/api/job-board-api
+      max-pages: 5
+    hn-who-is-hiring:
+      enabled: true
+      algolia-base-url: https://hn.algolia.com/api/v1
+    relocateme:
+      enabled: true
+      base-url: https://relocate.me
+      max-listing-pages: 5
+      categories: [back-end, full-stack, lead-developer, team-lead, other]
+      excluded-slugs: [the-global-move, micro1]
+    japandev:
+      enabled: true
+      base-url: https://japan-dev.com
+      paths: [/jobs, /java-jobs-in-japan, /go-jobs-in-japan, /backend-jobs-in-japan]
+    tokyodev:
+      enabled: true
+      base-url: https://www.tokyodev.com/jobs
+    picnic:
+      enabled: true
+      base-url: https://jobs.picnic.app/en/vacancies
+    hennge:
+      enabled: true
+      # The spec's original URL (hennge.com/global/recruit/) 404s live -- HENNGE's
+      # careers site actually lives on this separate domain (see notes/phase0-orchestrator.md).
+      base-url: https://recruit.hennge.com/en/mid-career-ngh/
+    greenhouse:
+      enabled: true
+      base-url: https://boards-api.greenhouse.io/v1/boards
+    personio:
+      enabled: true
+      base-url-template: "https://{sub}.jobs.personio.de/xml?language=en"
+    lever:
+      enabled: false
+      base-url: https://api.lever.co/v0/postings
+
+  match:
+    role-gate:
+      exclude-keywords:
+        - "QA"
+        - "Quality Assurance"
+        - "Test Engineer"
+        - "Data Scientist"
+        - "Data Science"
+        - "Data Analyst"
+        - "Product Manager"
+        - "Project Manager"
+        - "Designer"
+        - "UX"
+        - "UI Designer"
+        - "Recruiter"
+        - "Recruiting"
+        - "Talent Acquisition"
+        - "Frontend Engineer"
+        - "Front-End Engineer"
+        - "Front End Developer"
+        - "iOS Engineer"
+        - "Android Engineer"
+        - "Mobile Engineer"
+        - "MLOps"
+        - "Head of"
+    tech-gate:
+      go-context-words: [backend, microservice, microservices, engineer, service, api, developer]
+      go-proximity-chars: 40
+    visa-gate:
+      description-pattern: "(?i)visa\\s*(sponsor|sponsorship|support|services)|relocat(e|ion)\\s*(package|support|assistance|bonus)|work\\s*permit|blue\\s*card"
+    experience:
+      target-min-years: 2
+      target-max-years: 6
+    priority-countries: [JP, NL, DE, AT, LT]
+    seniority:
+      heavy-down-rank: [Principal, Staff, Architect, Director, Head]
+      mild-down-rank: [Lead, Manager]
+    weights:
+      java-in-title: 3
+      java-in-body: 2
+      go-present: 2
+      spring-boot: 1
+      kotlin-scala: 1
+      relocation-benefit: 1
+      relocation-benefit-cap: 3
+      experience-overlap: 2
+      priority-country: 1
+      salary-published: 1
+      registry-priority-high: 1
+      seniority-heavy-penalty: -3
+      seniority-mild-penalty: -1
+    thresholds:
+      strong-min-score: 7
+      match-min-score: 4
+
+  notify:
+    console:
+      enabled: true
+    slack:
+      webhook-url: ${SLACK_WEBHOOK_URL:}
+    telegram:
+      bot-token: ${TELEGRAM_BOT_TOKEN:}
+      chat-id: ${TELEGRAM_CHAT_ID:}
+    email:
+      enabled: false
+      to: ${JOBRADAR_NOTIFY_EMAIL:}
+
+  export:
+    dir: export

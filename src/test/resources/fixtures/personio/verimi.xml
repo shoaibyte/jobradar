@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SYNTHETIC FIXTURE: the live https://verimi.jobs.personio.de/xml?language=en feed
+  returned an empty <workzag-jobs/> at capture time (2026-08-05) -- Verimi's careers
+  page confirms "keine offenen [Positionen]" (no open positions). This fixture is
+  hand-built from the real Personio XML schema (see Section 4.3 of the spec) so the
+  parser has a populated, representative document to test field extraction against.
+  See src/test/resources/fixtures/personio/verimi.empty.xml for the real captured
+  empty response.
+-->
+<workzag-jobs>
+  <position>
+    <id>1894273</id>
+    <name>Senior Software Engineer - Identity Platform (f/m/d)</name>
+    <office>Berlin</office>
+    <department>Engineering</department>
+    <recruitingCategory>Software Development</recruitingCategory>
+    <employmentType>Permanent employment</employmentType>
+    <seniority>Senior</seniority>
+    <schedule>Full-time</schedule>
+    <yearsOfExperience>5 to 7 years</yearsOfExperience>
+    <keywords>Java, Spring Boot, Kotlin, Kafka, PostgreSQL, self-sovereign identity</keywords>
+    <occupation>Software Development</occupation>
+    <occupationCategory>Software Development</occupationCategory>
+    <createdAt>2026-07-02T09:00:00+02:00</createdAt>
+    <jobDescriptions>
+      <jobDescription>
+        <name>Your Role</name>
+        <value>&lt;p&gt;Verimi is building the identity platform for the future. As a Senior Software Engineer you will design and operate backend services in &lt;b&gt;Java 17 and Spring Boot&lt;/b&gt; that power our self-sovereign identity wallet, working alongside a team that also ships Kotlin services.&lt;/p&gt;</value>
+      </jobDescription>
+      <jobDescription>
+        <name>Your Profile</name>
+        <value>&lt;p&gt;5-7 years of backend engineering experience, deep knowledge of Java/Spring, comfort with distributed systems. We sponsor visas and support relocation to Berlin for the right candidate, including relocation assistance and support with the residence permit process.&lt;/p&gt;</value>
+      </jobDescription>
+    </jobDescriptions>
+  </position>
+  <position>
+    <id>1894290</id>
+    <name>Software Architect - Platform Security (m/w/d)</name>
+    <office>Berlin</office>
+    <department>Engineering</department>
+    <recruitingCategory>Software Development</recruitingCategory>
+    <employmentType>Permanent employment</employmentType>
+    <seniority>Experienced</seniority>
+    <schedule>Full-time</schedule>
+    <yearsOfExperience>More than 7 years</yearsOfExperience>
+    <keywords>Java, Spring, Security, Architecture</keywords>
+    <occupation>Software Architecture</occupation>
+    <occupationCategory>Software Development</occupationCategory>
+    <createdAt>2026-06-18T09:00:00+02:00</createdAt>
+    <jobDescriptions>
+      <jobDescription>
+        <name>Your Role</name>
+        <value>&lt;p&gt;As Software Architect you will own the technical direction of our Java/Spring based identity services and mentor senior engineers.&lt;/p&gt;</value>
+      </jobDescription>
+      <jobDescription>
+        <name>Your Profile</name>
+        <value>&lt;p&gt;7+ years experience, architecture background. Relocation package and work permit support provided.&lt;/p&gt;</value>
+      </jobDescription>
+    </jobDescriptions>
+  </position>
+</workzag-jobs>

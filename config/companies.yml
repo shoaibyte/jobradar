@@ -1,0 +1,71 @@
+# Watchlist consumed at startup by the ATS clients (Section 6).
+# relocation: COMPANY_WIDE short-circuits the visa gate for that company's postings.
+#   Only set where visa sponsorship + relocation is standard on effectively every eng
+#   posting. NOTE: on multi-region boards (Adyen, HelloFresh, Wolt, IMC) this bypasses
+#   the visa gate only -- the location scorer still has to down-rank non-EU offices.
+# priority: HIGH adds +1 to the score.
+#
+# 2026-08-07: Japan market removed (PayPay, PayPay Card, PayPay Securities, HENNGE).
+# Europe-only watchlist, biased toward Java/Go with Kotlin/Scala/Python as acceptable.
+# Every enabled greenhouse/personio token below returned HTTP 200 from the public
+# boards API on 2026-08-07. Anything unverifiable is parked at the bottom.
+
+companies:
+
+  # ---------------- Netherlands -- HSM visa, IND-recognised sponsors ----------------
+  - { name: Picnic,       ats: custom-html, url: "https://jobs.picnic.app/en/vacancies", relocation: COMPANY_WIDE, priority: HIGH }  # Java/Spring backend; active interview pipeline
+  - { name: Adyen,        ats: greenhouse,  token: adyen,        relocation: COMPANY_WIDE, priority: HIGH }  # Java at scale + "Infrastructure Developer (Go)" reqs live; Amsterdam is largest office; relocation standard
+  - { name: IMC Trading,  ats: greenhouse,  token: imc,          relocation: COMPANY_WIDE }                  # "Java Software Engineer" in Amsterdam; low-latency, high bar, excellent relocation package
+  - { name: Catawiki,     ats: greenhouse,  token: catawiki }                                                # Ruby-heavy, occasional plain "Backend Engineer" reqs; IND-recognised sponsor
+
+  # ---------------- Germany -- EU Blue Card ----------------
+  - { name: N26,          ats: greenhouse,  token: n26,          relocation: COMPANY_WIDE, priority: HIGH }  # Kotlin/Java fintech; 13 backend reqs at check (Berlin/Barcelona); mid-level friendly
+  - { name: HelloFresh,   ats: greenhouse,  token: hellofresh,   relocation: COMPANY_WIDE, priority: HIGH }  # "Senior Backend Engineer - Go and/or JVM" style reqs; board includes non-EU offices -- location scoring matters
+  - { name: SumUp,        ats: greenhouse,  token: sumup }                                                   # Go + JVM backend (Berlin/Barcelona/Sofia); sponsorship varies by office -- keep visa gate on
+  - { name: GetYourGuide, ats: greenhouse,  token: getyourguide, relocation: COMPANY_WIDE }                  # Berlin; visa + relocation support on postings; snapshot skews senior -- watch for mid-level
+  - { name: Celonis,      ats: greenhouse,  token: celonis }                                                 # Java in Munich, SWE-to-Staff ladder; mostly senior reqs
+  - { name: Flix,         ats: greenhouse,  token: flix }                                                    # Kotlin-leaning JVM (Berlin/Munich); board carries freelance noise
+  - { name: Raisin,       ats: greenhouse,  token: raisin }                                                  # Java/Spring fintech (Berlin); no open backend reqs at check -- cheap to keep polling
+  - { name: Solaris,      ats: greenhouse,  token: solarisbank }                                             # Java/Go BaaS (Berlin/Frankfurt); zero eng reqs at check post-restructuring -- low noise
+  - { name: Verimi,       ats: personio,    token: verimi }                                                  # Java/Spring, mostly senior/architect -> down-ranked, still tracked
+
+  # ---------------- Austria -- RWR card ----------------
+  - { name: Bitpanda,     ats: greenhouse,  token: bitpanda,     priority: HIGH }                            # Vienna; non-senior "Software Engineer, Java" and "Software Engineer, Golang" reqs live at check; visa support advertised per posting
+  - { name: Journi,       ats: personio,    token: journi-gmbh }                                             # Vienna JVM backend; 2026 loop closed at the seniority bar -- keep warm, act on mid-level reqs
+
+  # ---------------- Baltics / Nordics ----------------
+  - { name: Wolt,         ats: greenhouse,  token: wolt,         relocation: COMPANY_WIDE, priority: HIGH }  # Kotlin/Go/Scala/Python backend; Helsinki/Berlin relocation package is standard
+  - { name: Veriff,       ats: greenhouse,  token: veriff }                                                  # Tallinn HQ; small board (10 reqs at check); referral channel available
+
+  # ---------------- Needs a small new ATS client (endpoints verified live 2026-08-07) ----------------
+  # Ashby public API is a single unauthenticated GET returning JSON -- cheapest client to add:
+  #   GET https://api.ashbyhq.com/posting-api/job-board/{token}
+  # - { name: Nord Security, ats: ashby, token: nord-security, relocation: COMPANY_WIDE, priority: HIGH }    # 140 reqs at check; Go-heavy; Vilnius relocation package
+  # - { name: Mollie,        ats: ashby, token: mollie }                                                     # 36 reqs at check; payments, Amsterdam; IND-recognised sponsor
+  # SmartRecruiters public API, also unauthenticated JSON (paginated):
+  #   GET https://api.smartrecruiters.com/v1/companies/{token}/postings
+  # - { name: Delivery Hero, ats: smartrecruiters, token: DeliveryHero, relocation: COMPANY_WIDE }           # 1061 postings at check; Go/Kotlin/Scala/Python; Berlin
+
+  # ---------------- Vinted (Vilnius; Go platform work; relocation package) ----------------
+  # 2026-08-07: mystery from the README resolved. The tenant lives on Greenhouse's EU data-residency
+  # silo (job pages reference s101.recruiting.eu.greenhouse.io). There is NO public boards API on the
+  # EU silo: boards-api.eu.greenhouse.io does not resolve, and api.eu.greenhouse.io/v1/boards/* 302s
+  # to a login page -- so no token will ever work through the greenhouse client. Viable path instead:
+  # careers.vinted.com/jobs is Next.js and embeds the full list (~170 postings with gh_jid, title,
+  # location) in the __NEXT_DATA__ JSON blob -- a clean custom-html adapter, same pattern as Picnic.
+  # - { name: Vinted, ats: custom-html, url: "https://careers.vinted.com/jobs", relocation: COMPANY_WIDE, priority: HIGH }
+
+  # ---------------- CANDIDATES -- ATS not detectable server-side (JS-rendered); run detect-ats ----------------
+  # - Wise            # Java/Spring; Tallinn + London; legacy greenhouse token `transferwise` is dead
+  # - Backbase        # Java/Spring banking platform, Amsterdam; not on greenhouse/lever/recruitee public APIs
+  # - Dynatrace       # Java-heavy, Linz/Vienna, relocation support; SmartRecruiters id `Dynatrace` returns 0
+  # - Bolt            # Tallinn; careers page references greenhouse but the board token is JS-loaded
+  # - Aiven           # Go/Python/Java (Kafka), Helsinki/Berlin; greenhouse refs present, token JS-loaded
+  # - Pipedrive       # Go/PHP/Node, Tallinn/Prague; not on teamtailor/recruitee public APIs
+  # - Zalando         # Java/Scala/Kotlin, Berlin; jobs.zalando.com own API moved (old /api/jobs 404s)
+  # - Trade Republic  # Java/Spring, Berlin; greenhouse `traderepublic` is stale (1 posting) -- likely migrated ATS
+
+  # Checked and excluded 2026-08-07: greenhouse `bird` is Bird Global (US city services), not the
+  # Amsterdam MessageBird; Elastic hires remote in-country (no relocation); Optiver's greenhouse
+  # board is empty (moved to own site); refurbed is EU-remote (needs existing work rights);
+  # GoStudent / Contentful / Smartly had no relevant EU backend reqs.

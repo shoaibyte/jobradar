@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JobRadar</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --text: #1a1d23;
+    --muted: #6b7280;
+    --border: #e2e5ea;
+    --accent: #2563eb;
+    --accent-text: #ffffff;
+    --strong: #15803d;
+    --match: #b45309;
+    --partial: #6b7280;
+    --row-hover: #f0f4ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --panel: #1d2026;
+      --text: #e6e8eb;
+      --muted: #9aa1ab;
+      --border: #2c3038;
+      --accent: #3b82f6;
+      --accent-text: #0b1120;
+      --strong: #4ade80;
+      --match: #fbbf24;
+      --partial: #9aa1ab;
+      --row-hover: #232733;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 1.5rem;
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 0.25rem; }
+  .subtitle { color: var(--muted); margin: 0 0 1rem; font-size: 0.85rem; }
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  @media (min-width: 900px) {
+    .layout { grid-template-columns: 3fr 1fr; }
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+  }
+  .banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.5rem;
+    grid-column: 1 / -1;
+  }
+  .banner .stats { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; color: var(--muted); font-size: 0.85rem; }
+  .banner .stats b { color: var(--text); }
+  .spacer { flex: 1; }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--accent-text);
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+  }
+  button:disabled { opacity: 0.6; cursor: progress; }
+  button.secondary { background: transparent; color: var(--text); border-color: var(--border); }
+  .filters { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; margin-bottom: 1rem; }
+  .field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; color: var(--muted); }
+  select, input[type=number] {
+    font: inherit;
+    padding: 0.4rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { cursor: pointer; user-select: none; color: var(--muted); font-weight: 600; white-space: nowrap; }
+  th:hover { color: var(--text); }
+  th .arrow { font-size: 0.7rem; opacity: 0.6; }
+  tr:hover td { background: var(--row-hover); }
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #fff;
+  }
+  .badge.STRONG { background: var(--strong); }
+  .badge.MATCH { background: var(--match); }
+  .badge.PARTIAL { background: var(--partial); }
+  .flag { display: inline-block; margin-right: 0.3rem; padding: 0.05rem 0.35rem; border-radius: 4px; font-size: 0.7rem; border: 1px solid var(--border); color: var(--muted); }
+  .flag.on { color: var(--accent-text); background: var(--accent); border-color: var(--accent); }
+  a.job-link { color: var(--accent); text-decoration: none; }
+  a.job-link:hover { text-decoration: underline; }
+  .empty, .loading, .error { color: var(--muted); padding: 1rem 0; font-size: 0.85rem; }
+  .error { color: #dc2626; }
+  .companies-table td, .companies-table th { font-size: 0.8rem; }
+  h2 { font-size: 1rem; margin: 0 0 0.75rem; }
+</style>
+</head>
+<body>
+
+<h1>JobRadar</h1>
+<p class="subtitle">Multi-source relocation job aggregator &mdash; matches, sources and manual runs.</p>
+
+<div class="layout">
+
+  <div class="panel banner" id="run-banner">
+    <div>
+      <strong>Last run:</strong> <span id="last-run-summary">loading&hellip;</span>
+    </div>
+    <div class="stats" id="last-run-stats"></div>
+    <div class="spacer"></div>
+    <button id="run-now-btn" type="button">Run now</button>
+  </div>
+
+  <div class="panel" id="matches-panel">
+    <h2>Matches</h2>
+    <div class="filters">
+      <div class="field">
+        <label for="filter-strength">Strength</label>
+        <select id="filter-strength">
+          <option value="">Any</option>
+          <option value="STRONG">Strong</option>
+          <option value="MATCH">Match</option>
+          <option value="PARTIAL">Partial</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filter-min-score">Min score</label>
+        <input type="number" id="filter-min-score" step="0.5" placeholder="e.g. 4">
+      </div>
+      <div class="field">
+        <label for="filter-status">Status</label>
+        <select id="filter-status">
+          <option value="">Any</option>
+          <option value="ACTIVE">Active</option>
+          <option value="REMOVED">Removed</option>
+        </select>
+      </div>
+      <button id="apply-filters-btn" type="button">Apply</button>
+      <button id="clear-filters-btn" type="button" class="secondary">Clear</button>
+    </div>
+    <div id="matches-container">
+      <div class="loading">Loading matches&hellip;</div>
+    </div>
+  </div>
+
+  <div class="panel" id="companies-panel">
+    <h2>Sources</h2>
+    <div id="companies-container">
+      <div class="loading">Loading sources&hellip;</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var state = {
+    matches: [],
+    sortKey: 'score',
+    sortDir: 'desc'
+  };
+
+  var columns = [
+    { key: 'strength', label: 'Strength' },
+    { key: 'score', label: 'Score' },
+    { key: 'title', label: 'Title' },
+    { key: 'company', label: 'Company' },
+    { key: 'location', label: 'Location' },
+    { key: 'stack', label: 'Java/Go' },
+    { key: 'salaryRaw', label: 'Salary' },
+    { key: 'link', label: 'Link' }
+  ];
+
+  function qs(id) { return document.getElementById(id); }
+
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function fetchJson(url, options) {
+    return fetch(url, options).then(function (res) {
+      if (!res.ok) {
+        return res.text().then(function (body) {
+          throw new Error('HTTP ' + res.status + (body ? ': ' + body : ''));
+        });
+      }
+      var contentType = res.headers.get('content-type') || '';
+      if (contentType.indexOf('application/json') === -1) return null;
+      return res.json();
+    });
+  }
+
+  // ---- Matches ----
+
+  function hasReason(reasons, needle) {
+    if (!reasons) return false;
+    return reasons.some(function (r) { return r.toLowerCase().indexOf(needle) !== -1; });
+  }
+
+  function loadMatches() {
+    var container = qs('matches-container');
+    container.innerHTML = '<div class="loading">Loading matches&hellip;</div>';
+
+    var params = new URLSearchParams();
+    var strength = qs('filter-strength').value;
+    var minScore = qs('filter-min-score').value;
+    var status = qs('filter-status').value;
+    if (strength) params.set('strength', strength);
+    if (minScore) params.set('minScore', minScore);
+    if (status) params.set('status', status);
+
+    var url = '/api/matches' + (params.toString() ? '?' + params.toString() : '');
+
+    fetchJson(url)
+      .then(function (data) {
+        state.matches = data || [];
+        renderMatches();
+      })
+      .catch(function (err) {
+        container.innerHTML = '<div class="error">Failed to load matches: ' + escapeHtml(err.message) + '</div>';
+      });
+  }
+
+  function sortedMatches() {
+    var list = state.matches.slice();
+    var key = state.sortKey;
+    var dir = state.sortDir === 'asc' ? 1 : -1;
+
+    function value(m) {
+      switch (key) {
+        case 'strength': return m.strength || '';
+        case 'score': return m.score || 0;
+        case 'title': return (m.title || '').toLowerCase();
+        case 'company': return (m.company || '').toLowerCase();
+        case 'location': return ((m.city || '') + (m.country || '')).toLowerCase();
+        case 'salaryRaw': return (m.salaryRaw || '').toLowerCase();
+        default: return 0;
+      }
+    }
+
+    list.sort(function (a, b) {
+      var va = value(a), vb = value(b);
+      if (va < vb) return -1 * dir;
+      if (va > vb) return 1 * dir;
+      return 0;
+    });
+    return list;
+  }
+
+  function renderMatches() {
+    var container = qs('matches-container');
+    if (!state.matches.length) {
+      container.innerHTML = '<div class="empty">No matches for the current filters.</div>';
+      return;
+    }
+
+    var rows = sortedMatches().map(function (m) {
+      var isJava = hasReason(m.reasons, 'java');
+      var isGo = hasReason(m.reasons, 'go-present') || hasReason(m.reasons, 'go');
+      var location = [m.city, m.country].filter(Boolean).join(', ') || '&mdash;';
+      return '<tr>'
+        + '<td><span class="badge ' + escapeHtml(m.strength) + '">' + escapeHtml(m.strength) + '</span></td>'
+        + '<td>' + (typeof m.score === 'number' ? m.score.toFixed(1) : '') + '</td>'
+        + '<td>' + escapeHtml(m.title) + (m.visaFlag ? ' <span class="flag on">visa</span>' : '') + '</td>'
+        + '<td>' + escapeHtml(m.company) + '</td>'
+        + '<td>' + location + '</td>'
+        + '<td><span class="flag ' + (isJava ? 'on' : '') + '">Java</span>'
+        +     '<span class="flag ' + (isGo ? 'on' : '') + '">Go</span></td>'
+        + '<td>' + (m.salaryRaw ? escapeHtml(m.salaryRaw) : '&mdash;') + '</td>'
+        + '<td><a class="job-link" href="' + escapeHtml(m.url) + '" target="_blank" rel="noopener">open</a></td>'
+        + '</tr>';
+    }).join('');
+
+    var head = columns.map(function (col) {
+      var arrow = '';
+      if (state.sortKey === col.key) {
+        arrow = ' <span class="arrow">' + (state.sortDir === 'asc' ? '▲' : '▼') + '</span>';
+      }
+      return '<th data-key="' + col.key + '">' + col.label + arrow + '</th>';
+    }).join('');
+
+    container.innerHTML = '<table><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table>';
+
+    Array.prototype.forEach.call(container.querySelectorAll('th[data-key]'), function (th) {
+      th.addEventListener('click', function () {
+        var key = th.getAttribute('data-key');
+        if (key === 'link') return;
+        if (state.sortKey === key) {
+          state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          state.sortKey = key;
+          state.sortDir = key === 'score' ? 'desc' : 'asc';
+        }
+        renderMatches();
+      });
+    });
+  }
+
+  // ---- Companies / sources ----
+
+  function loadCompanies() {
+    var container = qs('companies-container');
+    fetchJson('/api/companies')
+      .then(function (data) {
+        if (!data || !data.length) {
+          container.innerHTML = '<div class="empty">No companies configured.</div>';
+          return;
+        }
+        var rows = data.map(function (c) {
+          return '<tr>'
+            + '<td>' + escapeHtml(c.name) + '</td>'
+            + '<td>' + escapeHtml(c.ats) + '</td>'
+            + '<td>' + c.activeCount + '</td>'
+            + '</tr>';
+        }).join('');
+        container.innerHTML = '<table class="companies-table"><thead><tr>'
+          + '<th>Company</th><th>ATS</th><th>Active</th>'
+          + '</tr></thead><tbody>' + rows + '</tbody></table>';
+      })
+      .catch(function (err) {
+        container.innerHTML = '<div class="error">Failed to load sources: ' + escapeHtml(err.message) + '</div>';
+      });
+  }
+
+  // ---- Last run banner ----
+
+  function formatStats(stats) {
+    if (!stats) return '';
+    return Object.keys(stats).map(function (key) {
+      return '<span><b>' + escapeHtml(stats[key]) + '</b> ' + escapeHtml(key) + '</span>';
+    }).join('');
+  }
+
+  function loadLastRun() {
+    var summary = qs('last-run-summary');
+    var statsEl = qs('last-run-stats');
+    fetchJson('/api/runs?limit=1')
+      .then(function (data) {
+        if (!data || !data.length) {
+          summary.textContent = 'no runs yet';
+          statsEl.innerHTML = '';
+          return;
+        }
+        var run = data[0];
+        var when = run.finishedAt || run.startedAt || 'unknown time';
+        summary.textContent = '#' + run.id + ' at ' + when;
+        statsEl.innerHTML = formatStats(run.stats);
+      })
+      .catch(function (err) {
+        summary.textContent = 'unavailable';
+        statsEl.innerHTML = '<span class="error">' + escapeHtml(err.message) + '</span>';
+      });
+  }
+
+  function refreshAll() {
+    loadLastRun();
+    loadMatches();
+    loadCompanies();
+  }
+
+  function runNow() {
+    var btn = qs('run-now-btn');
+    btn.disabled = true;
+    btn.textContent = 'Running…';
+    fetchJson('/api/run', { method: 'POST' })
+      .then(function () {
+        refreshAll();
+      })
+      .catch(function (err) {
+        alert('Ingest run failed: ' + err.message);
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'Run now';
+      });
+  }
+
+  qs('run-now-btn').addEventListener('click', runNow);
+  qs('apply-filters-btn').addEventListener('click', loadMatches);
+  qs('clear-filters-btn').addEventListener('click', function () {
+    qs('filter-strength').value = '';
+    qs('filter-min-score').value = '';
+    qs('filter-status').value = '';
+    loadMatches();
+  });
+
+  refreshAll();
+})();
+</script>
+
+</body>
+</html>

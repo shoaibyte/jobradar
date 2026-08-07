@@ -1,0 +1,43 @@
+[
+  {
+    "id": "8f3a2c1e-9b4d-4e2a-8c6f-1a2b3c4d5e6f",
+    "text": "Backend Engineer, Java (Relocation Available)",
+    "categories": {
+      "team": "Engineering",
+      "department": "Engineering",
+      "location": "Amsterdam, Netherlands",
+      "commitment": "Full-time"
+    },
+    "descriptionPlain": "We are looking for a Backend Engineer with 3-6 years of experience to join our Java and Spring Boot based platform team. Go experience is a plus. We sponsor work visas and provide a relocation package for candidates moving to Amsterdam.",
+    "description": "<p>We are looking for a Backend Engineer with 3-6 years of experience to join our Java and Spring Boot based platform team. Go experience is a plus.</p><p>We sponsor work visas and provide a relocation package for candidates moving to Amsterdam.</p>",
+    "lists": [
+      {
+        "text": "Requirements",
+        "content": "<ul><li>3-6 years backend experience</li><li>Java, Spring Boot</li><li>Go a plus</li></ul>"
+      },
+      {
+        "text": "Benefits",
+        "content": "<ul><li>Visa sponsorship</li><li>Relocation assistance</li></ul>"
+      }
+    ],
+    "hostedUrl": "https://jobs.lever.co/example/8f3a2c1e-9b4d-4e2a-8c6f-1a2b3c4d5e6f",
+    "applyUrl": "https://jobs.lever.co/example/8f3a2c1e-9b4d-4e2a-8c6f-1a2b3c4d5e6f/apply",
+    "createdAt": 1753776000000
+  },
+  {
+    "id": "1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e",
+    "text": "Senior Product Designer",
+    "categories": {
+      "team": "Design",
+      "department": "Product",
+      "location": "Remote",
+      "commitment": "Full-time"
+    },
+    "descriptionPlain": "We are looking for a Senior Product Designer to join our team.",
+    "description": "<p>We are looking for a Senior Product Designer to join our team.</p>",
+    "lists": [],
+    "hostedUrl": "https://jobs.lever.co/example/1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e",
+    "applyUrl": "https://jobs.lever.co/example/1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6e/apply",
+    "createdAt": 1753000000000
+  }
+]
