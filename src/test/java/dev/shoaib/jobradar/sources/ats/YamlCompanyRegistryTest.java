@@ -30,32 +30,33 @@ class YamlCompanyRegistryTest {
 
     @Test
     void byNameIsCaseInsensitiveAndReturnsExpectedFields() {
-        Optional<CompanyEntry> payPay = registry.byName("paypay");
+        Optional<CompanyEntry> adyen = registry.byName("adyen");
 
-        assertThat(payPay).isPresent();
-        assertThat(payPay.get().name()).isEqualTo("PayPay");
-        assertThat(payPay.get().ats()).isEqualTo("greenhouse");
-        assertThat(payPay.get().token()).isEqualTo("paypay");
-        assertThat(payPay.get().relocation()).isEqualTo(RelocationPolicy.COMPANY_WIDE);
-        assertThat(payPay.get().priority()).isEqualTo(CompanyPriority.HIGH);
+        assertThat(adyen).isPresent();
+        assertThat(adyen.get().name()).isEqualTo("Adyen");
+        assertThat(adyen.get().ats()).isEqualTo("greenhouse");
+        assertThat(adyen.get().token()).isEqualTo("adyen");
+        assertThat(adyen.get().relocation()).isEqualTo(RelocationPolicy.COMPANY_WIDE);
+        assertThat(adyen.get().priority()).isEqualTo(CompanyPriority.HIGH);
 
-        assertThat(registry.byName("PAYPAY")).isPresent();
+        assertThat(registry.byName("ADYEN")).isPresent();
         assertThat(registry.byName("does-not-exist")).isEmpty();
     }
 
     @Test
     void defaultsApplyWhenRelocationAndPriorityAreAbsent() {
-        CompanyEntry payPaySecurities = registry.byName("PayPay Securities").orElseThrow();
+        CompanyEntry catawiki = registry.byName("Catawiki").orElseThrow();
 
-        assertThat(payPaySecurities.relocation()).isEqualTo(RelocationPolicy.NONE);
-        assertThat(payPaySecurities.priority()).isEqualTo(CompanyPriority.NORMAL);
+        assertThat(catawiki.relocation()).isEqualTo(RelocationPolicy.NONE);
+        assertThat(catawiki.priority()).isEqualTo(CompanyPriority.NORMAL);
     }
 
     @Test
     void byAtsIsCaseInsensitiveAndGroupsCorrectly() {
         List<CompanyEntry> greenhouse = registry.byAts("GREENHOUSE");
         assertThat(greenhouse).extracting(CompanyEntry::token)
-            .containsExactlyInAnyOrder("paypay", "paypaycard", "paypaysec");
+            .containsExactlyInAnyOrder("adyen", "imc", "catawiki", "n26", "hellofresh", "sumup",
+                "getyourguide", "celonis", "flix", "raisin", "solarisbank", "bitpanda", "wolt", "veriff");
 
         List<CompanyEntry> personio = registry.byAts("personio");
         assertThat(personio).extracting(CompanyEntry::token)

@@ -30,16 +30,16 @@ class CandidateFitMatchEngineTest {
     private final CandidateFitMatchEngine engine = new CandidateFitMatchEngine(defaultProperties(), testRegistry());
 
     @Test
-    void payPayBackendEngineerJavaKotlinScalaGoWelcomed_isStrong() {
+    void woltBackendEngineerJavaKotlinScalaGoWelcomed_isStrong() {
         JobPosting posting = posting(
-            "PayPay Backend Engineer",
-            "PayPay",
-            "JP",
+            "Wolt Backend Engineer",
+            "Wolt",
+            "FI",
             "Join our backend team building services with Spring Boot in Java, Kotlin, and Scala. "
                 + "Go experience is welcomed. Roughly 3 to 6 years of experience preferred.",
             List.of("Java", "Kotlin", "Scala", "Go"),
             List.of("Relocation package", "Visa sponsorship", "Housing allowance"),
-            "¥8,000,000 - ¥12,000,000",
+            "€65,000 - €85,000",
             false);
 
         Optional<MatchOutcome> outcome = engine.evaluate(posting);
@@ -108,12 +108,12 @@ class CandidateFitMatchEngineTest {
     }
 
     @Test
-    void hengeGoNiceToHavePythonPrimary_isPartial() {
+    void goNiceToHavePythonPrimaryBackend_isPartial() {
         JobPosting posting = posting(
-            "HENNGE Software Engineer",
-            "HENNGE",
-            "JP",
-            "HENNGE builds enterprise security products with a Python-primary backend. Go is a "
+            "Software Engineer",
+            "SomeCo",
+            "US",
+            "The team builds enterprise security products with a Python-primary backend. Go is a "
                 + "nice-to-have for our backend team, and prior Go exposure is a plus.",
             List.of("Python"),
             List.of(),
@@ -206,7 +206,7 @@ class CandidateFitMatchEngineTest {
         experience.setTargetMaxYears(6);
         props.setExperience(experience);
 
-        props.setPriorityCountries(List.of("JP", "NL", "DE", "AT", "LT"));
+        props.setPriorityCountries(List.of("NL", "DE", "AT", "EE", "FI"));
 
         MatchProperties.Seniority seniority = new MatchProperties.Seniority();
         seniority.setHeavyDownRank(List.of("Principal", "Staff", "Architect", "Director", "Head"));
@@ -218,7 +218,7 @@ class CandidateFitMatchEngineTest {
         weights.setJavaInBody(2);
         weights.setGoPresent(2);
         weights.setSpringBoot(1);
-        weights.setKotlinScala(1);
+        weights.setSecondaryLanguage(1);
         weights.setRelocationBenefit(1);
         weights.setRelocationBenefitCap(3);
         weights.setExperienceOverlap(2);
@@ -239,23 +239,21 @@ class CandidateFitMatchEngineTest {
 
     /**
      * Seeded from the real {@code config/companies.yml} values relevant to these tests. Verimi
-     * and HENNGE have no {@code relocation:}/{@code priority:} keys in that file, so per
-     * {@code CompanyEntry}'s documented defaults they resolve to NONE/NORMAL here - NOT
-     * COMPANY_WIDE/HIGH. Vinted is commented out in the real file (no discoverable Greenhouse
-     * board token) and is intentionally absent from this fake too.
+     * and Journi have no {@code priority:} key in that file, so per {@code CompanyEntry}'s
+     * documented defaults they resolve to NORMAL here - NOT HIGH. Verimi likewise has no
+     * {@code relocation:} key (defaults to NONE). Vinted is commented out in the real file (no
+     * discoverable Greenhouse board token) and is intentionally absent from this fake too.
      */
     private static CompanyRegistry testRegistry() {
         return new FakeCompanyRegistry()
-            .add(new CompanyEntry("PayPay", "greenhouse", "paypay", null, RelocationPolicy.COMPANY_WIDE,
+            .add(new CompanyEntry("Wolt", "greenhouse", "wolt", null, RelocationPolicy.COMPANY_WIDE,
                 CompanyPriority.HIGH))
             .add(new CompanyEntry("Picnic", "custom-html", null, "https://jobs.picnic.app/en/vacancies",
                 RelocationPolicy.COMPANY_WIDE, CompanyPriority.HIGH))
-            .add(new CompanyEntry("HENNGE", "custom-html", null, "https://hennge.com/global/recruit/",
-                RelocationPolicy.NONE, CompanyPriority.NORMAL))
             .add(new CompanyEntry("Verimi", "personio", "verimi", null, RelocationPolicy.NONE,
                 CompanyPriority.NORMAL))
             .add(new CompanyEntry("Journi", "personio", "journi-gmbh", null, RelocationPolicy.NONE,
-                CompanyPriority.HIGH));
+                CompanyPriority.NORMAL));
     }
 
     private static final class FakeCompanyRegistry implements CompanyRegistry {
