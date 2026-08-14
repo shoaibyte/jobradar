@@ -87,21 +87,9 @@ app:
       max-listing-pages: 5
       categories: [back-end, full-stack, lead-developer, team-lead, other]
       excluded-slugs: [the-global-move, micro1]
-    japandev:
-      enabled: true
-      base-url: https://japan-dev.com
-      paths: [/jobs, /java-jobs-in-japan, /go-jobs-in-japan, /backend-jobs-in-japan]
-    tokyodev:
-      enabled: true
-      base-url: https://www.tokyodev.com/jobs
     picnic:
       enabled: true
       base-url: https://jobs.picnic.app/en/vacancies
-    hennge:
-      enabled: true
-      # The spec's original URL (hennge.com/global/recruit/) 404s live -- HENNGE's
-      # careers site actually lives on this separate domain (see notes/phase0-orchestrator.md).
-      base-url: https://recruit.hennge.com/en/mid-career-ngh/
     greenhouse:
       enabled: true
       base-url: https://boards-api.greenhouse.io/v1/boards
@@ -145,7 +133,7 @@ app:
     experience:
       target-min-years: 2
       target-max-years: 6
-    priority-countries: [JP, NL, DE, AT, LT]
+    priority-countries: [NL, DE, AT, EE, FI]
     seniority:
       heavy-down-rank: [Principal, Staff, Architect, Director, Head]
       mild-down-rank: [Lead, Manager]
@@ -154,7 +142,7 @@ app:
       java-in-body: 2
       go-present: 2
       spring-boot: 1
-      kotlin-scala: 1
+      secondary-language: 1
       relocation-benefit: 1
       relocation-benefit-cap: 3
       experience-overlap: 2
