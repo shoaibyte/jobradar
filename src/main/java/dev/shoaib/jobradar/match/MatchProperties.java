@@ -187,7 +187,7 @@ public class MatchProperties {
         private double javaInBody;
         private double goPresent;
         private double springBoot;
-        private double kotlinScala;
+        private double secondaryLanguage;
         private double relocationBenefit;
         private int relocationBenefitCap;
         private double experienceOverlap;
@@ -229,12 +229,12 @@ public class MatchProperties {
             this.springBoot = springBoot;
         }
 
-        public double getKotlinScala() {
-            return kotlinScala;
+        public double getSecondaryLanguage() {
+            return secondaryLanguage;
         }
 
-        public void setKotlinScala(double kotlinScala) {
-            this.kotlinScala = kotlinScala;
+        public void setSecondaryLanguage(double secondaryLanguage) {
+            this.secondaryLanguage = secondaryLanguage;
         }
 
         public double getRelocationBenefit() {

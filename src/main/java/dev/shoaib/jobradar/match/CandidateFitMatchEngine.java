@@ -34,7 +34,8 @@ public class CandidateFitMatchEngine implements MatchEngine {
     private static final Pattern GOLANG_PATTERN = Pattern.compile("\\bgolang\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern GO_WORD_PATTERN = Pattern.compile("\\bgo\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern SPRING_PATTERN = Pattern.compile("\\bspring(\\s*boot)?\\b", Pattern.CASE_INSENSITIVE);
-    private static final Pattern KOTLIN_SCALA_PATTERN = Pattern.compile("\\b(kotlin|scala)\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SECONDARY_LANGUAGE_PATTERN =
+        Pattern.compile("\\b(kotlin|scala|python)\\b", Pattern.CASE_INSENSITIVE);
 
     // "N-M years", "N to M years" (also accepts en/em dash and the "yrs" abbreviation).
     private static final Pattern EXPERIENCE_RANGE_PATTERN =
@@ -107,9 +108,9 @@ public class CandidateFitMatchEngine implements MatchEngine {
             score += w.getSpringBoot();
             reasons.add(formatSigned(w.getSpringBoot()) + " Spring/Spring Boot mentioned");
         }
-        if (KOTLIN_SCALA_PATTERN.matcher(combinedText).find()) {
-            score += w.getKotlinScala();
-            reasons.add(formatSigned(w.getKotlinScala()) + " Kotlin/Scala mentioned");
+        if (SECONDARY_LANGUAGE_PATTERN.matcher(combinedText).find()) {
+            score += w.getSecondaryLanguage();
+            reasons.add(formatSigned(w.getSecondaryLanguage()) + " Kotlin/Scala/Python mentioned");
         }
 
         int relocationBenefitCount = countRelocationBenefits(posting);
