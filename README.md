@@ -128,7 +128,7 @@ Dashboard: `http://localhost:8080/` (or whatever `SERVER_PORT` you set).
 ## Architecture decisions
 
 **Adapter pattern** (`core.JobSourceAdapter`): every source — HTML-scraped
-(Relocate.me, Japan Dev, TokyoDev, Picnic, HENNGE), API-based (Arbeitnow, HN "Who is
+(Relocate.me, Picnic), API-based (Arbeitnow, HN "Who is
 hiring?"), or ATS-driven (Greenhouse/Personio/Lever, one bean per `companies.yml` row) —
 implements the same `fetch(FetchContext) -> List<JobPosting>` contract. The ingest
 orchestrator (`pipeline.IngestOrchestrator`) never knows which kind of source it's
@@ -173,12 +173,6 @@ autoconfiguration) — is written up in `notes/*.md`.
   confirmed Greenhouse-backed, but the public Job Board API token isn't discoverable by
   any means tried (see `config/companies.yml` and `notes/phase0-orchestrator.md`). Its
   entry is commented out; re-enable it if you find the real token.
-- **HENNGE's careers page moved** (`hennge.com/global/recruit/` 404s; the real page is
-  `recruit.hennge.com`, already updated in `application.yml`). The updated page isn't a
-  clean structured job-card listing, but `HenngeAdapter`'s generic card detection still
-  pulled 3 real postings from it live (see the final run below) — good enough for a
-  source the spec already treats as lower-priority/Go-nice-to-have, and its one fully
-  parsed real posting is captured via Relocate.me instead.
 - **No cross-run mutual exclusion beyond a simple lock**: `POST /api/run` firing at the
   same moment as the hourly scheduled run will have the second caller skip (logged), not
   queue — fine for personal use, would need real job-queue semantics for anything busier.

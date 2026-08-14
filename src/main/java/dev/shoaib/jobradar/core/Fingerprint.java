@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
  * Cross-source dedupe key: {@code sha256(lower(company)|normalizedTitle|countryIso)}.
  * Normalization strips seniority prefixes (Senior/Staff/Lead/...) and gender-marker
  * suffixes like "(m/w/d)" or "(all genders)" so the same role posted through two
- * sources (e.g. HENNGE direct + Japan Dev) collapses to one fingerprint.
+ * sources (e.g. a company's own ATS board + Relocate.me) collapses to one fingerprint.
  */
 public final class Fingerprint {
 

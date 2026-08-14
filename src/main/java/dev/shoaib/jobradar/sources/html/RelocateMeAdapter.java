@@ -35,7 +35,7 @@ public class RelocateMeAdapter implements JobSourceAdapter {
     private static final Logger log = LoggerFactory.getLogger(RelocateMeAdapter.class);
     private static final String SOURCE_NAME = "relocateme";
 
-    /** {country}/{city}/{company}/{slug}-{id}, e.g. /japan/tokyo/paypay/backend-engineer-10205 */
+    /** {country}/{city}/{company}/{slug}-{id}, e.g. /netherlands/amsterdam/picnic/backend-engineer-10205 */
     private static final Pattern JOB_HREF = Pattern.compile(
         "^/(?<country>[a-z0-9-]+)/(?<city>[a-z0-9-]+)/(?<company>[a-z0-9-]+)/(?<slug>[a-z0-9-]+)-(?<id>\\d+)/?$");
 
