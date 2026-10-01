@@ -72,6 +72,33 @@ the issue advertises about itself, so the logs tell you exactly which state you'
 | `WARN ... cookie has likely expired or is malformed` | Cookie was sent but Substack served the preview — re-export it |
 | `INFO ... advertises N ... behind the paywall` | No cookie configured; inventory only |
 
+### Weekly issue archive
+
+Separately from the match feed, every weekly issue is archived in full (all sections,
+one row per entry per issue) into `relocateme_issue` and `relocateme_job`. A daily pass
+(`app.relocateme-archive.cron`) picks up new weeks; `--app.archive-relocateme=true` runs
+one backfill and exits. Issues stored as `PREVIEW` (paid issue, no working cookie) are
+re-fetched once `SUBSTACK_COOKIE` is set; `FULL` issues are never re-fetched.
+
+Read API (all filters optional, combinable):
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/relocateme/issues` | Every issue, newest first, with job count per section |
+| `GET /api/relocateme/sections` | Section name -> job count across all issues |
+| `GET /api/relocateme/jobs?week=&section=&q=&keyword=&country=&remote=&region=&page=&size=` | Paged jobs (`size` 1-200, default 50), newest issue first, newsletter order within it |
+| `GET /api/relocateme/jobs/{id}` | One job |
+
+`country` takes a code or a name (`NL`, `Netherlands`, `UK`) and also matches
+multi-country jobs; `keyword` matches one whole job keyword; `q` searches title,
+company, location and keywords; `region` is a substring of the remote region (`EMEA`).
+
+```sql
+select i.week_number, j.section, j.title, j.company, j.location, j.apply_url
+from relocateme_job j join relocateme_issue i on i.id = j.issue_id
+order by i.week_number desc, j.section, j.position;
+```
+
 ## Run modes
 
 ```bash
@@ -79,6 +106,7 @@ the issue advertises about itself, so the logs tell you exactly which state you'
 ./mvnw spring-boot:run -Dspring-boot.run.arguments=--app.run-once=true   # one pass, then exit
 ./mvnw spring-boot:run -Dspring-boot.run.arguments=--app.dry-run=true    # fetch + match + log, no writes/notifications
 ./mvnw spring-boot:run -Dspring-boot.run.arguments=--app.detect-ats=https://careers.example.com/
+./mvnw spring-boot:run -Dspring-boot.run.arguments=--app.archive-relocateme=true  # backfill weekly archive, then exit
 ```
 
 Or against the packaged jar (`./mvnw package` first):

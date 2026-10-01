@@ -19,6 +19,7 @@ import org.springframework.stereotype.Component;
  *   the {@code sources-api} agent's detect-ats runner calls {@code System.exit}
  *   before this would matter, but we check defensively so ordering between
  *   {@code ApplicationRunner} beans is never a correctness concern.</li>
+ *   <li>{@code --app.archive-relocateme=true}: skipped likewise, for the same reason.</li>
  * </ul>
  */
 @Component
@@ -34,6 +35,9 @@ public class IngestStartupRunner implements ApplicationRunner {
     @Value("${app.detect-ats:}")
     private String detectAts;
 
+    @Value("${app.archive-relocateme:false}")
+    private boolean archiveRelocateMe;
+
     @Value("${app.startup-run.enabled:true}")
     private boolean startupRunEnabled;
 
@@ -45,6 +49,10 @@ public class IngestStartupRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         if (detectAts != null && !detectAts.isBlank()) {
             log.info("app.detect-ats is set; skipping pipeline startup run");
+            return;
+        }
+        if (archiveRelocateMe) {
+            log.info("app.archive-relocateme=true; skipping pipeline startup run");
             return;
         }
         if (!startupRunEnabled) {

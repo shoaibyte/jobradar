@@ -93,6 +93,11 @@ public class RelocateMeSubstackAdapter implements JobSourceAdapter {
         this.cookieConfigured = auth.cookieFor(URI.create(props.baseUrl()).getHost()).isPresent();
     }
 
+    /** Whether a session cookie is configured for the Substack host (paid issues readable). */
+    boolean cookieConfigured() {
+        return cookieConfigured;
+    }
+
     @Override
     public String name() {
         return SOURCE_NAME;
@@ -346,6 +351,217 @@ public class RelocateMeSubstackAdapter implements JobSourceAdapter {
 
     /** One {@code <li>} job entry -> posting; null when it isn't entry-shaped. */
     private JobPosting parseEntry(Element li, PostRef post) {
+        Entry entry = parseEntryFields(li);
+        if (entry == null) {
+            return null;
+        }
+        StringBuilder description = new StringBuilder(String.join("\n", entry.details()));
+        if (description.length() > 0) {
+            description.append("\n\n");
+        }
+        description.append("Listed in \"").append(post.title()).append("\" (")
+            .append(post.postDate().toString(), 0, 10).append(")");
+
+        // The newsletter's premise is that every relocation-tagged entry with a location
+        // comes with visa/relocation support, even when the bullet doesn't spell it out.
+        boolean visaFlag = !entry.visaLines().isEmpty();
+        if (!visaFlag && entry.country() != null && post.tags().stream()
+                .anyMatch(t -> t.toLowerCase(Locale.ROOT).contains("relocation"))) {
+            visaFlag = true;
+        }
+
+        return new JobPosting(
+            SourceType.RELOCATE_ME_SUBSTACK,
+            SOURCE_NAME,
+            canonicalUrl(entry.applyUrl()),
+            entry.title(),
+            entry.company(),
+            entry.city(),
+            entry.country(),
+            entry.applyUrl(),
+            description.toString(),
+            entry.keywords(),
+            entry.visaLines(),
+            null,
+            visaFlag,
+            post.postDate()
+        );
+    }
+
+    /**
+     * Every job entry in an issue body, across all sections, each tagged with the
+     * nearest preceding heading. Used by {@link RelocateMeWeeklyArchiver} to keep a full
+     * copy of each issue, independent of the configured {@code sections} filter.
+     */
+    IssueEntries parseAllEntries(String postJson) throws Exception {
+        JsonNode root = mapper.readTree(postJson);
+        String audience = root.path("audience").asText("");
+        String subtitle = root.path("subtitle").asText("");
+        String bodyHtml = root.path("body_html").asText("");
+        if (bodyHtml.isBlank()) {
+            return new IssueEntries(audience, subtitle, List.of(), Map.of(), List.of());
+        }
+        Document doc = Jsoup.parse(bodyHtml, props.baseUrl());
+        List<SectionEntry> entries = new ArrayList<>();
+        List<EmbeddedTable> tables = new ArrayList<>();
+        Map<String, Integer> positions = new LinkedHashMap<>();
+        String section = "";
+        // Combined selector -> matches come back in document order.
+        for (Element el : doc.select("h1, h2, h3, h4, h5, h6, li, div.datawrapper-wrap")) {
+            if (el.tagName().matches("h[1-6]")) {
+                section = el.text().trim();
+                continue;
+            }
+            if (el.tagName().equals("div")) {
+                // The first issues embed each section as a Datawrapper table instead of a list.
+                Element iframe = el.selectFirst("iframe[src]");
+                if (iframe != null) {
+                    String src = iframe.attr("src");
+                    tables.add(new EmbeddedTable(section, (src.endsWith("/") ? src : src + "/") + "dataset.csv"));
+                }
+                continue;
+            }
+            if (el.selectFirst("> ul, > ol") == null && el.select("> p").size() < 2) {
+                continue; // detail bullets and section-index bullets carry no detail lines
+            }
+            Entry entry = parseEntryFields(el);
+            if (entry != null) {
+                int position = positions.merge(section, 1, Integer::sum);
+                entries.add(new SectionEntry(section, position, entry));
+            }
+        }
+        return new IssueEntries(audience, subtitle, entries, advertisedSectionCounts(doc), tables);
+    }
+
+    /** "[Backend Developer](https://...) ✅" -> title, url, trailing marker. */
+    private static final Pattern MARKDOWN_LINK = Pattern.compile(
+        "^\\s*\\[(?<title>.+?)\\]\\((?<url>[^)\\s]+)\\)\\s*(?<rest>.*)$", Pattern.DOTALL);
+
+    /**
+     * Rows of an embedded Datawrapper table ({@code dataset.csv}, header
+     * {@code Role,Location,Company,Size,Industry,LinkedIn page,Job keywords}) as entries.
+     * Columns are matched by header name, so reordering or a missing column is tolerated;
+     * rows whose Role cell carries no markdown link (no apply URL) are dropped.
+     */
+    static List<Entry> entriesFromCsv(String csv) {
+        List<List<String>> rows = parseCsv(csv);
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        Map<String, Integer> col = new LinkedHashMap<>();
+        List<String> header = rows.get(0);
+        for (int i = 0; i < header.size(); i++) {
+            col.putIfAbsent(header.get(i).trim().toLowerCase(Locale.ROOT), i);
+        }
+        List<Entry> entries = new ArrayList<>();
+        for (List<String> row : rows.subList(1, rows.size())) {
+            Matcher role = MARKDOWN_LINK.matcher(cell(row, col, "role"));
+            if (!role.matches()) {
+                continue;
+            }
+            String location = blankToNull(cell(row, col, "location"));
+            String company = blankToNull(cell(row, col, "company"));
+            Matcher linkedin = MARKDOWN_LINK.matcher(cell(row, col, "linkedin page"));
+            String companyLinkedinUrl = linkedin.matches() ? linkedin.group("url") : null;
+            String industry = cell(row, col, "industry");
+            String size = cell(row, col, "size");
+            String industrySize = industry.isBlank() && size.isBlank() ? null
+                : industry.isBlank() ? size : size.isBlank() ? industry : industry + " | " + size;
+            List<String> keywords = new ArrayList<>();
+            for (String k : cell(row, col, "job keywords").split(",")) {
+                if (!k.isBlank()) {
+                    keywords.add(k.trim());
+                }
+            }
+            List<String> details = new ArrayList<>();
+            if (company != null) {
+                details.add("Company: " + company);
+            }
+            if (location != null) {
+                details.add("Location: " + location);
+            }
+            if (industrySize != null) {
+                details.add("Industry and size: " + industrySize);
+            }
+            if (!keywords.isEmpty()) {
+                details.add("Job keywords: " + String.join(", ", keywords));
+            }
+            if (!role.group("rest").isBlank()) {
+                details.add("Marker: " + role.group("rest").trim());
+            }
+            String title = role.group("title").trim();
+            String rawLocation = location;
+            Matcher titleTag = JobLocation.REMOTE_TAG.matcher(title);
+            if (titleTag.find()) {
+                rawLocation = titleTag.group() + " " + nullToEmpty(location);
+                title = title.substring(titleTag.end()).trim();
+            }
+            JobLocation where = JobLocation.parse(rawLocation);
+            entries.add(new Entry(title, role.group("url"), company, companyLinkedinUrl, where,
+                industrySize, List.copyOf(keywords), List.of(), List.copyOf(details)));
+        }
+        return entries;
+    }
+
+    private static String cell(List<String> row, Map<String, Integer> col, String name) {
+        Integer i = col.get(name);
+        return i == null || i >= row.size() ? "" : row.get(i).trim();
+    }
+
+    private static String blankToNull(String s) {
+        return s == null || s.isBlank() ? null : s;
+    }
+
+    private static String nullToEmpty(String s) {
+        return s == null ? "" : s;
+    }
+
+    /** RFC 4180: quoted fields, doubled quotes, commas and newlines inside quotes. */
+    static List<List<String>> parseCsv(String csv) {
+        List<List<String>> rows = new ArrayList<>();
+        List<String> row = new ArrayList<>();
+        StringBuilder field = new StringBuilder();
+        boolean quoted = false;
+        String text = csv.startsWith("\uFEFF") ? csv.substring(1) : csv;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (quoted) {
+                if (c == '"' && i + 1 < text.length() && text.charAt(i + 1) == '"') {
+                    field.append('"');
+                    i++;
+                } else if (c == '"') {
+                    quoted = false;
+                } else {
+                    field.append(c);
+                }
+            } else if (c == '"') {
+                quoted = true;
+            } else if (c == ',') {
+                row.add(field.toString());
+                field.setLength(0);
+            } else if (c == '\n' || c == '\r') {
+                if (c == '\r' && i + 1 < text.length() && text.charAt(i + 1) == '\n') {
+                    i++;
+                }
+                row.add(field.toString());
+                field.setLength(0);
+                if (row.size() > 1 || !row.get(0).isBlank()) {
+                    rows.add(row);
+                }
+                row = new ArrayList<>();
+            } else {
+                field.append(c);
+            }
+        }
+        row.add(field.toString());
+        if (row.size() > 1 || !row.get(0).isBlank()) {
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    /** Field extraction shared by the match feed and the archive; null when not entry-shaped. */
+    private Entry parseEntryFields(Element li) {
         Element titleP = li.selectFirst("> p");
         Element titleLink = titleP == null ? null : titleP.selectFirst("a[href]");
         if (titleLink == null) {
@@ -358,87 +574,74 @@ public class RelocateMeSubstackAdapter implements JobSourceAdapter {
         }
 
         String company = null;
-        String city = null;
-        String country = null;
-        List<String> techTags = new ArrayList<>();
-        List<String> benefits = new ArrayList<>();
-        boolean visaFlag = false;
-        StringBuilder description = new StringBuilder();
+        String companyLinkedinUrl = null;
+        String location = titleLineLocation(titleP);
+        String industrySize = null;
+        List<String> keywords = new ArrayList<>();
+        List<String> visaLines = new ArrayList<>();
+        List<String> details = new ArrayList<>();
 
-        for (Element detail : li.select("> ul > li, > ol > li")) {
+        // Detail lines are a nested list in current issues, sibling <p>s in older ones.
+        List<Element> detailLines = new ArrayList<>(li.select("> ul > li, > ol > li"));
+        detailLines.addAll(li.select("> p").stream().filter(p -> p != titleP).toList());
+        for (Element detail : detailLines) {
             String line = detail.text().trim();
             if (line.isBlank()) {
                 continue;
             }
-            if (description.length() > 0) {
-                description.append("\n");
-            }
-            description.append(line);
+            details.add(line);
 
             int colon = line.indexOf(':');
             String label = colon > 0 ? line.substring(0, colon).trim().toLowerCase(Locale.ROOT) : "";
             String value = colon > 0 ? line.substring(colon + 1).trim() : line;
 
             switch (label) {
-                case "company" -> company = stripLinkParens(detail, value);
-                case "location", "locations" -> {
-                    if (value.contains(",")) {
-                        String[] parts = value.split(",", 2);
-                        city = parts[0].trim();
-                        country = parts[1].trim();
-                    } else {
-                        country = value;
-                    }
+                case "company" -> {
+                    company = stripLinkParens(detail, value);
+                    Element linkedin = detail.selectFirst("a[href*=linkedin.com]");
+                    companyLinkedinUrl = linkedin == null ? null : linkedin.attr("href");
                 }
+                case "location", "locations" -> location = value;
+                case "industry and size" -> industrySize = value;
                 case "job keywords", "keywords", "tech stack" -> {
                     String plain = value.trim();
                     if (!plain.isBlank() && !plain.equalsIgnoreCase("Not specified")) {
                         for (String keyword : plain.split(",")) {
                             String k = keyword.trim();
                             if (!k.isBlank()) {
-                                techTags.add(k);
+                                keywords.add(k);
                             }
                         }
                     }
                 }
-                default -> { /* free-form line; already captured in the description */ }
+                default -> { /* free-form line; kept in details */ }
             }
             String lower = line.toLowerCase(Locale.ROOT);
             if (lower.contains("visa") || lower.contains("relocation")) {
-                visaFlag = true;
-                benefits.add(line);
+                visaLines.add(line);
             }
         }
-
-        if (description.length() > 0) {
-            description.append("\n\n");
+        // A few entries carry the remote tag inside the link text instead of before it.
+        Matcher titleTag = JobLocation.REMOTE_TAG.matcher(title);
+        if (titleTag.find()) {
+            location = titleTag.group() + " " + (location == null ? "" : location);
+            title = title.substring(titleTag.end()).trim();
         }
-        description.append("Listed in \"").append(post.title()).append("\" (")
-            .append(post.postDate().toString(), 0, 10).append(")");
+        return new Entry(title, applyUrl, company, companyLinkedinUrl, JobLocation.parse(location),
+            industrySize, List.copyOf(keywords), List.copyOf(visaLines), List.copyOf(details));
+    }
 
-        // The newsletter's premise is that every relocation-tagged entry with a location
-        // comes with visa/relocation support, even when the bullet doesn't spell it out.
-        if (!visaFlag && country != null && post.tags().stream()
-                .anyMatch(t -> t.toLowerCase(Locale.ROOT).contains("relocation"))) {
-            visaFlag = true;
-        }
-
-        return new JobPosting(
-            SourceType.RELOCATE_ME_SUBSTACK,
-            SOURCE_NAME,
-            canonicalUrl(applyUrl),
-            title,
-            company,
-            city,
-            country,
-            applyUrl,
-            description.toString(),
-            techTags,
-            benefits,
-            null,
-            visaFlag,
-            post.postDate()
-        );
+    /**
+     * Current issues put the location on the title line itself, either after the link
+     * ({@code <strong><a>Title</a></strong> in Amsterdam, Netherlands 🇳🇱}) or as a remote
+     * tag before it ({@code [REMOTE – LATAM] <strong><a>Title</a></strong>}). Returns the
+     * raw remainder for {@link JobLocation#parse}; null when there is none.
+     */
+    private static String titleLineLocation(Element titleP) {
+        Element clone = titleP.clone();
+        clone.select("a").remove();
+        String rest = clone.text().trim();
+        return rest.isBlank() ? null : rest;
     }
 
     /**
@@ -489,7 +692,7 @@ public class RelocateMeSubstackAdapter implements JobSourceAdapter {
     }
 
     /** "Back End (33 roles)" / "back-end" / "Back End" all compare equal. */
-    private static String normalize(String s) {
+    static String normalize(String s) {
         return s == null ? "" : s.toLowerCase(Locale.ROOT)
             .replaceAll("[^a-z0-9]+", " ").trim();
     }
@@ -506,5 +709,37 @@ public class RelocateMeSubstackAdapter implements JobSourceAdapter {
      */
     record PostParseResult(List<JobPosting> postings, Map<String, Integer> advertisedCounts,
         Map<String, Integer> parsedCounts, boolean sectionsFound, boolean paidPreview) {
+    }
+
+    /** One job entry's raw fields; {@code visaLines} are detail lines mentioning visa/relocation. */
+    record Entry(String title, String applyUrl, String company, String companyLinkedinUrl, JobLocation where,
+        String industrySize, List<String> keywords, List<String> visaLines, List<String> details) {
+
+        String location() {
+            return where.location();
+        }
+
+        String city() {
+            return where.city();
+        }
+
+        String country() {
+            return where.country();
+        }
+    }
+
+    /** {@code position} is 1-based within {@code section}. */
+    record SectionEntry(String section, int position, Entry entry) {
+    }
+
+    /**
+     * {@code tables} are embedded Datawrapper sections whose rows live at {@code csvUrl}
+     * and still need fetching; {@code entries} holds only what the HTML itself contained.
+     */
+    record IssueEntries(String audience, String subtitle, List<SectionEntry> entries,
+        Map<String, Integer> advertisedCounts, List<EmbeddedTable> tables) {
+    }
+
+    record EmbeddedTable(String section, String csvUrl) {
     }
 }

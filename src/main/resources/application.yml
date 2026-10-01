@@ -50,6 +50,8 @@ app:
   run-once: false
   dry-run: false
   detect-ats: ""
+  # --app.archive-relocateme=true: one full backfill of relocateme_issue/relocateme_job, then exit
+  archive-relocateme: false
   # Set to false only in test property sources -- keeps @SpringBootTest context loads
   # from firing a real network ingest pass on every test run.
   startup-run:
@@ -120,6 +122,13 @@ app:
     lever:
       enabled: false
       base-url: https://api.lever.co/v0/postings
+
+  # Full archive of every weekly issue (all sections) into relocateme_issue / relocateme_job.
+  # Reuses app.sources.relocateme-substack.base-url and archive-page-size.
+  relocateme-archive:
+    issue-title-pattern: "(?i)^weekly hand-curated tech jobs with relocation"
+    # Daily; already-FULL issues are skipped, so this only picks up new weeks. "-" disables.
+    cron: "0 30 9 * * *"
 
   match:
     role-gate:
