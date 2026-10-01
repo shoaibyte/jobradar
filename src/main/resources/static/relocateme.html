@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RelocateMe Weekly Jobs</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --text: #1a1d23;
+    --muted: #6b7280;
+    --border: #e2e5ea;
+    --accent: #2563eb;
+    --accent-text: #ffffff;
+    --remote: #7c3aed;
+    --chip-bg: #eef2ff;
+    --row-hover: #f0f4ff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --panel: #1d2026;
+      --text: #e6e8eb;
+      --muted: #9aa1ab;
+      --border: #2c3038;
+      --accent: #3b82f6;
+      --accent-text: #0b1120;
+      --remote: #a78bfa;
+      --chip-bg: #252a36;
+      --row-hover: #232733;
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 1.5rem;
+  }
+  h1 { font-size: 1.4rem; margin: 0 0 0.25rem; }
+  .subtitle { color: var(--muted); margin: 0 0 1rem; font-size: 0.85rem; }
+  .subtitle a { color: var(--accent); text-decoration: none; }
+  .layout { display: grid; gap: 1rem; max-width: 1200px; margin: 0 auto; }
+  .layout > * { min-width: 0; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; }
+  .filters { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; margin-bottom: 0.75rem; }
+  .field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; color: var(--muted); }
+  select, input[type=search] {
+    font: inherit;
+    padding: 0.4rem 0.5rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+  }
+  input[type=search] { min-width: 14rem; }
+  input[type=search].short { min-width: 8rem; }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--accent-text);
+    border-radius: 6px;
+    padding: 0.4rem 0.9rem;
+  }
+  button:disabled { opacity: 0.45; cursor: default; }
+  button.secondary { background: transparent; color: var(--text); border-color: var(--border); }
+  .issue-summary { font-size: 0.85rem; margin: 0 0 0.75rem; }
+  .issue-summary .muted { margin-left: 0.25rem; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 0 0 0.5rem; }
+  .result-count { color: var(--muted); font-size: 0.8rem; }
+  .spacer { flex: 1; }
+  .pager { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--muted); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+  tr:hover td { background: var(--row-hover); }
+  .nowrap { white-space: nowrap; }
+  .muted { color: var(--muted); }
+  .sub { color: var(--muted); font-size: 0.75rem; margin-top: 0.15rem; }
+  a.job-link { color: var(--accent); text-decoration: none; font-weight: 600; }
+  a.job-link:hover, a.plain:hover { text-decoration: underline; }
+  a.plain { color: inherit; text-decoration: none; }
+  .li { font-size: 0.7rem; color: var(--muted); margin-left: 0.3rem; }
+  .tag {
+    display: inline-block; margin: 0 0.25rem 0.25rem 0; padding: 0.05rem 0.4rem;
+    border-radius: 4px; font-size: 0.7rem; border: 1px solid var(--border); color: var(--muted);
+  }
+  .tag.remote { color: #fff; background: var(--remote); border-color: var(--remote); }
+  .chip {
+    display: inline-block; margin: 0 0.25rem 0.25rem 0; padding: 0.1rem 0.45rem;
+    border-radius: 999px; font: inherit; font-size: 0.72rem; background: var(--chip-bg);
+    color: var(--text); border: 1px solid transparent; cursor: pointer;
+  }
+  .chip:hover, .chip.on { border-color: var(--accent); }
+  .empty, .loading, .error { color: var(--muted); padding: 1rem 0; font-size: 0.85rem; }
+  .error { color: #dc2626; }
+  @media (max-width: 700px) {
+    body { padding: 1rem; }
+    .panel { padding: 0.75rem; }
+    .filters { gap: 0.6rem; }
+    .field { flex: 1 1 calc(50% - 0.6rem); min-width: 0; }
+    .field:has(#f-q), .field:has(#f-week), .field:has(#f-section) { flex-basis: 100%; }
+    select, input[type=search] { min-width: 0 !important; width: 100%; }
+    #clear-btn { flex: 1 1 100%; }
+    .bar { gap: 0.4rem; }
+    td.empty-cell { display: none; }
+    thead { display: none; }
+    tr { display: block; border-bottom: 1px solid var(--border); padding: 0.4rem 0; }
+    td { display: block; border: 0; padding: 0.15rem 0.2rem; }
+    td.week { color: var(--muted); font-size: 0.75rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>RelocateMe weekly jobs</h1>
+<p class="subtitle">Every job from The Global Move's weekly hand-curated lists. <a href="index.html">Back to matches</a></p>
+
+<div class="layout">
+  <div class="panel">
+    <div class="filters">
+      <div class="field">
+        <label for="f-q">Search</label>
+        <input type="search" id="f-q" placeholder="Title, company, location, keyword">
+      </div>
+      <div class="field">
+        <label for="f-week">Week</label>
+        <select id="f-week"><option value="">All weeks</option></select>
+      </div>
+      <div class="field">
+        <label for="f-section">Section</label>
+        <select id="f-section"><option value="">All sections</option></select>
+      </div>
+      <div class="field">
+        <label for="f-country">Country</label>
+        <select id="f-country"><option value="">All countries</option></select>
+      </div>
+      <div class="field">
+        <label for="f-remote">Work mode</label>
+        <select id="f-remote">
+          <option value="">Any</option>
+          <option value="false">On-site / relocation</option>
+          <option value="true">Remote</option>
+        </select>
+      </div>
+      <div class="field" id="region-field" hidden>
+        <label for="f-region">Remote region</label>
+        <select id="f-region">
+          <option value="">Any region</option>
+          <option value="ANYWHERE">Anywhere</option>
+          <option value="EMEA">EMEA</option>
+          <option value="LATAM">LATAM</option>
+          <option value="APAC">APAC</option>
+          <option value="INDIA">India</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-keyword">Keyword</label>
+        <input type="search" id="f-keyword" placeholder="e.g. Java" class="short">
+      </div>
+      <button id="clear-btn" type="button" class="secondary">Clear</button>
+    </div>
+
+    <p class="issue-summary" id="issue-summary" hidden></p>
+
+    <div class="bar">
+      <span class="result-count" id="result-count"></span>
+      <span class="spacer"></span>
+      <div class="pager">
+        <button id="prev-btn" type="button" class="secondary">Prev</button>
+        <span id="page-label"></span>
+        <button id="next-btn" type="button" class="secondary">Next</button>
+      </div>
+    </div>
+
+    <div class="table-wrap" id="jobs-container"><div class="loading">Loading jobs&hellip;</div></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var API = 'api/relocateme';
+  var PAGE_SIZE = 50;
+  var FILTERS = ['q', 'week', 'section', 'country', 'remote', 'region', 'keyword'];
+  var countryNames = typeof Intl !== 'undefined' && Intl.DisplayNames
+    ? new Intl.DisplayNames(['en'], { type: 'region' }) : null;
+
+  var state = { page: 0, issues: [], request: 0 };
+
+  function qs(id) { return document.getElementById(id); }
+
+  function escapeHtml(value) {
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // Only http(s) links are rendered as links; anything else from the feed is shown as text.
+  function safeUrl(url) {
+    return /^https?:\/\//i.test(url || '') ? url : null;
+  }
+
+  function fetchJson(url) {
+    return fetch(url).then(function (res) {
+      if (!res.ok) {
+        return res.text().then(function (body) { throw new Error(res.status + ' ' + (body || res.statusText)); });
+      }
+      return res.json();
+    });
+  }
+
+  function countryName(code) {
+    try { return (countryNames && countryNames.of(code)) || code; } catch (e) { return code; }
+  }
+
+  function formatDate(iso) {
+    var d = new Date(iso);
+    return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  // ---- URL <-> filters, so a filtered view can be bookmarked and Back works.
+  function readUrl() {
+    var params = new URLSearchParams(location.search);
+    FILTERS.forEach(function (key) {
+      var el = qs('f-' + key);
+      var value = params.get(key) || '';
+      if (el.tagName === 'SELECT' && value && !el.querySelector('option[value="' + CSS.escape(value) + '"]')) {
+        el.insertAdjacentHTML('beforeend', '<option value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</option>');
+      }
+      el.value = value;
+    });
+    state.page = Math.max(0, parseInt(params.get('page') || '0', 10) || 0);
+    syncRegionField();
+  }
+
+  function filterParams() {
+    var params = new URLSearchParams();
+    FILTERS.forEach(function (key) {
+      var value = qs('f-' + key).value.trim();
+      if (value) params.set(key, value);
+    });
+    if (qs('f-remote').value !== 'true') params.delete('region');
+    return params;
+  }
+
+  function writeUrl(push) {
+    var params = filterParams();
+    if (state.page > 0) params.set('page', state.page);
+    var url = location.pathname + (params.toString() ? '?' + params : '');
+    if (url !== location.pathname + location.search) {
+      history[push ? 'pushState' : 'replaceState'](null, '', url);
+    }
+  }
+
+  function syncRegionField() {
+    var remote = qs('f-remote').value === 'true';
+    qs('region-field').hidden = !remote;
+    if (!remote) qs('f-region').value = '';
+  }
+
+  // ---- Filter options
+  function loadOptions() {
+    return Promise.all([
+      fetchJson(API + '/issues'),
+      fetchJson(API + '/sections'),
+      fetchJson(API + '/countries')
+    ]).then(function (results) {
+      state.issues = results[0];
+      fillSelect('f-week', 'All weeks', state.issues.map(function (i) {
+        return { value: i.weekNumber, label: 'Week ' + i.weekNumber + ' · ' + formatDate(i.postDate) + ' (' + i.jobCount + ')' };
+      }));
+      fillSelect('f-section', 'All sections', Object.keys(results[1]).sort().map(function (s) {
+        return { value: s, label: s + ' (' + results[1][s] + ')' };
+      }));
+      fillSelect('f-country', 'All countries', Object.keys(results[2]).map(function (code) {
+        return { value: code, label: countryName(code) + ' (' + results[2][code] + ')' };
+      }).sort(function (a, b) { return a.label.localeCompare(b.label); }));
+    });
+  }
+
+  function fillSelect(id, allLabel, options) {
+    var el = qs(id);
+    var current = el.value;
+    el.innerHTML = '<option value="">' + allLabel + '</option>' + options.map(function (o) {
+      return '<option value="' + escapeHtml(o.value) + '">' + escapeHtml(o.label) + '</option>';
+    }).join('');
+    el.value = current;
+  }
+
+  // ---- Jobs
+  function loadJobs() {
+    var params = filterParams();
+    params.set('page', state.page);
+    params.set('size', PAGE_SIZE);
+    var request = ++state.request;
+    qs('jobs-container').setAttribute('aria-busy', 'true');
+    renderIssueSummary();
+    fetchJson(API + '/jobs?' + params).then(function (data) {
+      if (request !== state.request) return; // a newer request superseded this one
+      render(data);
+    }).catch(function (err) {
+      if (request !== state.request) return;
+      qs('jobs-container').innerHTML = '<div class="error">Failed to load jobs: ' + escapeHtml(err.message) + '</div>';
+      qs('result-count').textContent = '';
+    }).then(function () {
+      qs('jobs-container').removeAttribute('aria-busy');
+    });
+  }
+
+  function renderIssueSummary() {
+    var el = qs('issue-summary');
+    var week = qs('f-week').value;
+    var issue = week && state.issues.filter(function (i) { return String(i.weekNumber) === week; })[0];
+    if (!issue) { el.hidden = true; return; }
+    el.hidden = false;
+    el.innerHTML = '<strong>' + escapeHtml(issue.title) + '</strong>'
+      + '<span class="muted">' + escapeHtml(formatDate(issue.postDate))
+      + (issue.subtitle ? ' · ' + escapeHtml(issue.subtitle) : '') + '</span>';
+  }
+
+  function render(data) {
+    var from = data.total === 0 ? 0 : data.page * data.size + 1;
+    var to = Math.min(data.total, (data.page + 1) * data.size);
+    qs('result-count').textContent = data.total === 0 ? 'No jobs'
+      : from + '–' + to + ' of ' + data.total.toLocaleString('en-GB') + ' jobs';
+    qs('page-label').textContent = data.totalPages > 1 ? 'Page ' + (data.page + 1) + ' of ' + data.totalPages : '';
+    qs('prev-btn').disabled = data.page <= 0;
+    qs('next-btn').disabled = data.page + 1 >= data.totalPages;
+
+    if (!data.items.length) {
+      qs('jobs-container').innerHTML = '<div class="empty">No jobs match these filters.</div>';
+      return;
+    }
+    var activeKeyword = qs('f-keyword').value.trim().toLowerCase();
+    var rows = data.items.map(function (job) {
+      var apply = safeUrl(job.applyUrl);
+      var title = apply
+        ? '<a class="job-link" href="' + escapeHtml(apply) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(job.title) + '</a>'
+        : '<strong>' + escapeHtml(job.title) + '</strong>';
+      var linkedin = safeUrl(job.companyLinkedinUrl);
+      var company = escapeHtml(job.company || '');
+      if (linkedin) {
+        company += '<a class="li" href="' + escapeHtml(linkedin) + '" target="_blank" rel="noopener noreferrer" title="Company on LinkedIn">LinkedIn</a>';
+      }
+      var where = [];
+      if (job.remote) {
+        where.push('<span class="tag remote">Remote' + (job.remoteRegion ? ' · ' + escapeHtml(job.remoteRegion) : '') + '</span>');
+      }
+      if (job.location) where.push('<div>' + escapeHtml(job.location) + '</div>');
+      if (job.countryCodes.length > 1 || (job.countryCodes.length === 1 && !job.location)) {
+        where.push('<div class="sub">' + job.countryCodes.map(function (c) { return escapeHtml(countryName(c)); }).join(', ') + '</div>');
+      }
+      var keywords = job.keywords.map(function (k) {
+        var on = k.toLowerCase() === activeKeyword ? ' on' : '';
+        return '<button type="button" class="chip' + on + '" data-keyword="' + escapeHtml(k) + '">' + escapeHtml(k) + '</button>';
+      }).join('');
+      return '<tr>'
+        + '<td class="week nowrap">Week ' + escapeHtml(job.weekNumber) + '<div class="sub">' + escapeHtml(formatDate(job.postDate)) + '</div></td>'
+        + '<td>' + title + '<div class="sub">' + escapeHtml(job.section) + '</div></td>'
+        + '<td>' + company + (job.industrySize ? '<div class="sub">' + escapeHtml(job.industrySize) + '</div>' : '') + '</td>'
+        + '<td>' + (where.join('') || '<span class="muted">Not stated</span>') + '</td>'
+        + (keywords ? '<td>' + keywords + '</td>' : '<td class="empty-cell"><span class="muted">–</span></td>')
+        + '</tr>';
+    }).join('');
+    qs('jobs-container').innerHTML = '<table><thead><tr>'
+      + '<th>Week</th><th>Job</th><th>Company</th><th>Location</th><th>Keywords</th>'
+      + '</tr></thead><tbody>' + rows + '</tbody></table>';
+  }
+
+  // ---- Events
+  function onFilterChange() {
+    state.page = 0;
+    syncRegionField();
+    writeUrl(true);
+    loadJobs();
+  }
+
+  var debounceTimer = null;
+  function onTyping() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(function () {
+      state.page = 0;
+      writeUrl(false);
+      loadJobs();
+    }, 300);
+  }
+
+  ['week', 'section', 'country', 'remote', 'region'].forEach(function (key) {
+    qs('f-' + key).addEventListener('change', onFilterChange);
+  });
+  ['q', 'keyword'].forEach(function (key) {
+    qs('f-' + key).addEventListener('input', onTyping);
+  });
+
+  qs('clear-btn').addEventListener('click', function () {
+    FILTERS.forEach(function (key) { qs('f-' + key).value = ''; });
+    onFilterChange();
+  });
+
+  qs('prev-btn').addEventListener('click', function () { state.page--; writeUrl(true); loadJobs(); window.scrollTo(0, 0); });
+  qs('next-btn').addEventListener('click', function () { state.page++; writeUrl(true); loadJobs(); window.scrollTo(0, 0); });
+
+  qs('jobs-container').addEventListener('click', function (e) {
+    var chip = e.target.closest('.chip');
+    if (!chip) return;
+    var keyword = chip.getAttribute('data-keyword');
+    qs('f-keyword').value = qs('f-keyword').value.trim().toLowerCase() === keyword.toLowerCase() ? '' : keyword;
+    onFilterChange();
+  });
+
+  window.addEventListener('popstate', function () { readUrl(); loadJobs(); });
+
+  // Options first, so a week/section/country from the URL selects its real labelled option.
+  loadOptions().catch(function (err) {
+    qs('jobs-container').innerHTML = '<div class="error">Failed to load filters: ' + escapeHtml(err.message) + '</div>';
+  }).then(function () {
+    readUrl();
+    loadJobs();
+  });
+})();
+</script>
+</body>
+</html>

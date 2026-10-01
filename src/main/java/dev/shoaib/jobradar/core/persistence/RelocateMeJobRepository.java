@@ -52,6 +52,10 @@ public interface RelocateMeJobRepository extends JpaRepository<RelocateMeJobEnti
     @Query("select j.section, count(j) from RelocateMeJobEntity j group by j.section order by count(j) desc")
     List<Object[]> sectionCounts();
 
+    /** [country_codes JSON, job count] -- the controller splits the arrays into per-code counts. */
+    @Query("select j.countryCodes, count(j) from RelocateMeJobEntity j group by j.countryCodes")
+    List<Object[]> countryCodeCounts();
+
     /** [issueId, section, job count] -- per-issue breakdown for the issue list. */
     @Query("select j.issueId, j.section, count(j) from RelocateMeJobEntity j group by j.issueId, j.section "
         + "order by j.issueId, min(j.id)")

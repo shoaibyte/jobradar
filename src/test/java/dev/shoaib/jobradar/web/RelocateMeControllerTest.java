@@ -133,6 +133,17 @@ class RelocateMeControllerTest {
     }
 
     @Test
+    void countsJobsPerCountryCodeAcrossMultiCountryRows() throws Exception {
+        when(jobRepository.countryCodeCounts()).thenReturn(List.of(
+            new Object[] {"[\"NL\"]", 5L}, new Object[] {"[\"SG\",\"NL\"]", 2L}, new Object[] {"[]", 9L}));
+
+        mockMvc.perform(get("/api/relocateme/countries"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.NL").value(7))
+            .andExpect(jsonPath("$.SG").value(2));
+    }
+
+    @Test
     void unknownJobIs404() throws Exception {
         when(jobRepository.findById(99)).thenReturn(Optional.empty());
         mockMvc.perform(get("/api/relocateme/jobs/99")).andExpect(status().isNotFound());

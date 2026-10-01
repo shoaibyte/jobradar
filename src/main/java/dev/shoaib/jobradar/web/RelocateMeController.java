@@ -28,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
  * <ul>
  *   <li>{@code GET /api/relocateme/issues} -- every issue, newest first, with per-section counts</li>
  *   <li>{@code GET /api/relocateme/sections} -- section name -> job count, for a filter list</li>
+ *   <li>{@code GET /api/relocateme/countries} -- ISO country code -> job count, most jobs first</li>
  *   <li>{@code GET /api/relocateme/jobs?week=&section=&q=&keyword=&country=&remote=&region=&page=&size=}</li>
  *   <li>{@code GET /api/relocateme/jobs/{id}}</li>
  * </ul>
@@ -72,6 +73,20 @@ public class RelocateMeController {
             counts.put((String) row[0], ((Number) row[1]).longValue());
         }
         return counts;
+    }
+
+    @GetMapping("/api/relocateme/countries")
+    public Map<String, Long> countries() {
+        Map<String, Long> counts = new java.util.HashMap<>();
+        for (Object[] row : jobRepository.countryCodeCounts()) {
+            long n = ((Number) row[1]).longValue();
+            for (String code : jsonCodec.toStringList((String) row[0])) {
+                counts.merge(code, n, Long::sum);
+            }
+        }
+        return counts.entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed().thenComparing(Map.Entry.comparingByKey()))
+            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> a, LinkedHashMap::new));
     }
 
     @GetMapping("/api/relocateme/jobs")
