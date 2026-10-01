@@ -36,7 +36,8 @@ class ThrottledHttpFetcherTest {
     }
 
     private ThrottledHttpFetcher newFetcher(long perHostMinIntervalMs, boolean robotsEnabled) {
-        return new ThrottledHttpFetcher("JobRadar-test", perHostMinIntervalMs, 5, 5, robotsEnabled, 60);
+        return new ThrottledHttpFetcher("JobRadar-test", new HttpAuthProperties(java.util.Map.of()),
+            perHostMinIntervalMs, 5, 5, robotsEnabled, 60);
     }
 
     @Test

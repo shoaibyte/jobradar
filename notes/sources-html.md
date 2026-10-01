@@ -207,3 +207,70 @@ JapanDevAdapterTest, TokyoDevAdapterTest, PicnicAdapterTest, HenngeAdapterTest}.
 No files outside `sources/html/**` (main or test) were created or modified; no frozen
 file (`pom.xml`, `application.yml`, `core/**`, `db/migration/**`,
 `config/companies.yml`, any fixture) was touched.
+
+## RelocateMeSubstackAdapter (The Global Move newsletter)
+
+Added later (2026-08): scrapes relocate.me's Substack, `relocateme.substack.com`,
+where a hand-curated job-list issue ("Weekly Hand-Curated Tech Jobs With Relocation:
+Week N") is published every Thursday. No JS rendering is needed — Substack's public
+JSON API serves everything:
+
+- `GET /api/v1/archive?sort=new&offset=N&limit=K` — issue discovery (slug, post_date,
+  postTags, audience). Newest-first; paging stops at `lookback-days` or `max-posts`.
+  Allowed by Substack's robots.txt (`/api/` is not in the `User-agent: *` disallow set).
+- `GET /api/v1/posts/{slug}` — `body_html` carries the rendered post body.
+
+Issue bodies group jobs under `<h2>` section headings ("Back End", "Full Stack",
+"Front End", ...); each entry is `li > p > strong > a` (title + apply URL) with a
+nested `ul` of labeled bullets (`Company:`, `Location:`, `Industry and size:`,
+`Job keywords:`, `Time zone:`, relocation lines). Verified against the live free issue
+`work-from-anywhere-tech-jobs-introductory`; fixtures mirror that exact markup.
+
+Design points:
+
+- **externalId = canonicalized apply URL** (tracking params `utm_*`/`ref`/`source`/
+  `src`/`embed` stripped, `gh_jid`/`ashby_jid`-style params kept), so a job re-listed
+  across weeks dedupes; newest issue wins within one fetch, and the (source,
+  external_id) upsert handles cross-run continuity.
+- **Paywall**: weekly issues are `audience: only_paid`; anonymous requests get a free
+  preview whose body contains only a section index (zero entries). The adapter detects
+  this and logs a pointer to `SUBSTACK_COOKIE` (host→Cookie map in
+  `app.http.auth.cookies`, sent by `ThrottledHttpFetcher`), which a paid subscriber can
+  set to unlock the content they're entitled to. Free posts parse without it.
+- **Layout-drift fallback**: if none of the configured `sections` headings appear, every
+  job-shaped `li` in the body is swept and kept when title/keywords match
+  `fallback-title-pattern` (backend-ish regex).
+
+Main: `sources/html/{RelocateMeSubstackAdapter, RelocateMeSubstackProperties}.java`,
+plus `pipeline/HttpAuthProperties.java` and the Cookie hook in `ThrottledHttpFetcher`.
+Tests: `RelocateMeSubstackAdapterTest` + `fixtures/relocateme-substack/*.json`.
+
+### Paid-list hardening (second pass)
+
+`parsePost` now returns a `PostParseResult` (postings + reconciliation inputs) rather
+than a bare list, and `fetch()` routes it through `logPostDiagnostics`:
+
+- **Advertised-count reconciliation.** Every issue's free intro indexes its own
+  sections with totals ("Back End – 33 roles (incl. 8 remote)" linking to
+  `.../i/<postid>/<anchor>`); `advertisedSectionCounts` parses those (also present in
+  anonymous previews) and the diagnostics compare them against per-section parsed
+  counts. Shortfall on a fully-served body → WARN naming the exact gap ("back end: got
+  2 of 5") — the silent-job-loss failure mode is the one a job alerter can't afford.
+- **Auth-state-aware paywall handling.** The adapter now injects `HttpAuthProperties`
+  and knows whether a cookie is configured for the newsletter host: preview + cookie →
+  WARN "expired/malformed, re-export"; preview + no cookie → INFO with the exact role
+  inventory behind the paywall (live: ~170 backend roles across a 6-week window).
+- **Cookie hygiene.** `HttpAuthProperties.cookieFor` trims and strips wrapping quotes
+  and trailing `;` (env-var paste accidents); multi-cookie values pass through intact.
+  Covered by `HttpAuthPropertiesTest`.
+
+Deliberately NOT built: anything that circumvents the paywall. The adapter only
+authenticates as the deployment owner's own paid account. Alternatives considered and
+rejected: Substack private RSS feeds (disallowed by robots.txt for `/feed/private`,
+which `ThrottledHttpFetcher` honors) and IMAP ingestion of the newsletter emails
+(legitimate but a whole new subsystem; revisit if cookie rot becomes a nuisance).
+
+Diagnostics are asserted in tests via a logback `ListAppender` on the adapter's logger
+(`RelocateMeSubstackAdapterTest.captureLogs`). New fixtures: `post-weekly-shortfall.json`
+(advertises 5, carries 2) and updated `post-weekly-fd0.json` (index totals match its
+entries so the happy path asserts "all advertised section totals met").

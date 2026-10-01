@@ -51,18 +51,21 @@ public class ThrottledHttpFetcher implements HttpFetcher {
     private final ConcurrentHashMap<String, RobotsEntry> robotsCache = new ConcurrentHashMap<>();
 
     private final String userAgent;
+    private final HttpAuthProperties auth;
     private final long perHostMinIntervalMs;
     private final boolean robotsEnabled;
     private final long robotsCacheTtlMinutes;
 
     public ThrottledHttpFetcher(
         @Value("${app.http.user-agent}") String userAgent,
+        HttpAuthProperties auth,
         @Value("${app.http.per-host-min-interval-ms}") long perHostMinIntervalMs,
         @Value("${app.http.connect-timeout-seconds}") int connectTimeoutSeconds,
         @Value("${app.http.read-timeout-seconds}") int readTimeoutSeconds,
         @Value("${app.http.robots-txt.enabled}") boolean robotsEnabled,
         @Value("${app.http.robots-txt.cache-ttl-minutes}") long robotsCacheTtlMinutes) {
         this.userAgent = userAgent;
+        this.auth = auth;
         this.perHostMinIntervalMs = perHostMinIntervalMs;
         this.robotsEnabled = robotsEnabled;
         this.robotsCacheTtlMinutes = robotsCacheTtlMinutes;
@@ -107,11 +110,14 @@ public class ThrottledHttpFetcher implements HttpFetcher {
             }
             waitForHostSlot(host);
             try {
-                String body = restClient.get()
+                RestClient.RequestHeadersSpec<?> request = restClient.get()
                     .uri(uri)
-                    .header(HttpHeaders.USER_AGENT, userAgent)
-                    .retrieve()
-                    .body(String.class);
+                    .header(HttpHeaders.USER_AGENT, userAgent);
+                Optional<String> cookie = auth.cookieFor(host);
+                if (cookie.isPresent()) {
+                    request = request.header(HttpHeaders.COOKIE, cookie.get());
+                }
+                String body = request.retrieve().body(String.class);
                 return Optional.ofNullable(body);
             } catch (HttpClientErrorException.NotFound e) {
                 return Optional.empty();

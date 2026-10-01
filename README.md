@@ -43,10 +43,34 @@ All optional. Missing config means that feature silently does nothing (no crash)
 | Variable | Purpose |
 |---|---|
 | `JOBRADAR_CONTACT_EMAIL` | Put in the `User-Agent` header sent to every source (be a good citizen) |
+| `SUBSTACK_COOKIE` | Session cookie of a paid [The Global Move](https://relocateme.substack.com) subscriber — unlocks the full weekly job lists for the `relocateme-substack` source (see below) |
 | `SLACK_WEBHOOK_URL` | Enables the Slack notification channel |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Enables the Telegram notification channel |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | Mail server for the email channel (also needs `app.notify.email.enabled=true` and `JOBRADAR_NOTIFY_EMAIL`, both off by default) |
 | `SERVER_PORT` | HTTP port for the dashboard/API (default 8080) |
+
+### Unlocking the paid Substack weekly job lists
+
+The `relocateme-substack` source ingests The Global Move's weekly hand-curated job
+issues (~30 backend roles/week). Those issues are paid-subscriber-only; anonymously the
+adapter can only report how many roles each issue holds ("advertises 33 back end, 12
+full stack role(s) behind the paywall"). If you subscribe ($15/mo), export your own
+session cookie once:
+
+1. Log in to `relocateme.substack.com` in your browser.
+2. DevTools → Application/Storage → Cookies → `https://relocateme.substack.com`.
+3. Copy the `substack.sid` value and set `SUBSTACK_COOKIE="substack.sid=<value>"`.
+
+The cookie is sent only to `relocateme.substack.com` (`app.http.auth.cookies` maps
+cookies per host). The adapter self-verifies every issue against the per-section totals
+the issue advertises about itself, so the logs tell you exactly which state you're in:
+
+| Log | Meaning |
+|---|---|
+| `... all advertised section totals met` | Full body parsed; every advertised role extracted |
+| `WARN ... parsed fewer entries than the issue advertises` | Markup drift or truncated body — parser needs a look |
+| `WARN ... cookie has likely expired or is malformed` | Cookie was sent but Substack served the preview — re-export it |
+| `INFO ... advertises N ... behind the paywall` | No cookie configured; inventory only |
 
 ## Run modes
 
