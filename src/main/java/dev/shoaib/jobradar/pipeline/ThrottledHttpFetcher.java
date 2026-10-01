@@ -5,6 +5,8 @@ import crawlercommons.robots.SimpleRobotRulesParser;
 import dev.shoaib.jobradar.core.HttpFetcher;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.retry.annotation.Backoff;
@@ -117,8 +120,8 @@ public class ThrottledHttpFetcher implements HttpFetcher {
                 if (cookie.isPresent()) {
                     request = request.header(HttpHeaders.COOKIE, cookie.get());
                 }
-                String body = request.retrieve().body(String.class);
-                return Optional.ofNullable(body);
+                ResponseEntity<byte[]> response = request.retrieve().toEntity(byte[].class);
+                return Optional.ofNullable(response.getBody()).map(bytes -> decode(bytes, response.getHeaders()));
             } catch (HttpClientErrorException.NotFound e) {
                 return Optional.empty();
             } catch (org.springframework.web.client.HttpServerErrorException e) {
@@ -127,6 +130,18 @@ public class ThrottledHttpFetcher implements HttpFetcher {
                 lastRequestNanosByHost.put(host, System.nanoTime());
             }
         }
+    }
+
+    /**
+     * Decodes with the response's declared charset, else UTF-8 (stripping a BOM). Spring's
+     * String converter would fall back to ISO-8859-1, which garbles UTF-8 bodies served
+     * without a charset, e.g. Datawrapper's {@code dataset.csv} as application/octet-stream.
+     */
+    static String decode(byte[] bytes, HttpHeaders headers) {
+        MediaType type = headers.getContentType();
+        Charset charset = type != null && type.getCharset() != null ? type.getCharset() : StandardCharsets.UTF_8;
+        String text = new String(bytes, charset);
+        return text.startsWith("\uFEFF") ? text.substring(1) : text;
     }
 
     private void waitForHostSlot(String host) {
