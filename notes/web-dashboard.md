@@ -40,7 +40,14 @@
   permitted by the spec for this personal-tool use case.
 
 ## Dashboard
-Single `static/index.html`, vanilla JS + `fetch`, no build step, no external CSS/JS. Uses
+Single `static/index.html` with three hash-routed tabs: `#matches` (default), `#relocateme`
+(the weekly-issue archive; its filters live in the hash, e.g. `#relocateme?week=78&remote=true`,
+so views are bookmarkable and Back/Forward step through filter changes) and `#sources`. Each
+tab initializes on first visit only; the matches view keeps persisting in localStorage. The
+old `static/relocateme.html` is a redirect to `index.html#relocateme` that carries its query
+string over.
+
+Vanilla JS + `fetch`, no build step, no external CSS/JS. Uses
 CSS custom properties + `prefers-color-scheme` for a basic light/dark look. Sections:
 last-run banner (from `GET /api/runs?limit=1`, showing `finishedAt`/`startedAt` and the
 parsed `stats` map as key/value chips) with a "Run now" button (`POST /api/run`, disables
