@@ -17,6 +17,8 @@
     --strong: #15803d;
     --match: #b45309;
     --partial: #6b7280;
+    --remote: #7c3aed;
+    --chip-bg: #eef2ff;
     --row-hover: #f0f4ff;
   }
   @media (prefers-color-scheme: dark) {
@@ -31,10 +33,13 @@
       --strong: #4ade80;
       --match: #fbbf24;
       --partial: #9aa1ab;
+      --remote: #a78bfa;
+      --chip-bg: #252a36;
       --row-hover: #232733;
     }
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -44,15 +49,13 @@
   }
   h1 { font-size: 1.4rem; margin: 0 0 0.25rem; }
   .subtitle { color: var(--muted); margin: 0 0 1rem; font-size: 0.85rem; }
+  .layout > * { min-width: 0; }
   .layout {
     display: grid;
     grid-template-columns: 1fr;
     gap: 1rem;
     max-width: 1200px;
     margin: 0 auto;
-  }
-  @media (min-width: 900px) {
-    .layout { grid-template-columns: 3fr 1fr; }
   }
   .panel {
     background: var(--panel);
@@ -65,11 +68,27 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.75rem 1.5rem;
-    grid-column: 1 / -1;
   }
   .banner .stats { display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; color: var(--muted); font-size: 0.85rem; }
   .banner .stats b { color: var(--text); }
   .spacer { flex: 1; }
+
+  /* ---- Tabs ---- */
+  .tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--border); overflow-x: auto; margin-bottom: -0.25rem; }
+  .tabs a {
+    padding: 0.5rem 0.9rem;
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+  .tabs a:hover { color: var(--text); }
+  .tabs a[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  .tab-intro { color: var(--muted); font-size: 0.8rem; margin: 0 0 0.75rem; }
+
+  /* ---- Controls ---- */
   button {
     font: inherit;
     cursor: pointer;
@@ -77,13 +96,18 @@
     background: var(--accent);
     color: var(--accent-text);
     border-radius: 6px;
-    padding: 0.5rem 1rem;
+    padding: 0.45rem 0.95rem;
   }
-  button:disabled { opacity: 0.6; cursor: progress; }
+  button:disabled { opacity: 0.5; cursor: default; }
   button.secondary { background: transparent; color: var(--text); border-color: var(--border); }
+  #run-now-btn:disabled { cursor: progress; }
   .filters { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: end; margin-bottom: 1rem; }
   .field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.8rem; color: var(--muted); }
-  select, input[type=number] {
+  .filters.secondary-filters { margin-top: -0.25rem; }
+  .check { flex-direction: row; align-items: center; gap: 0.35rem; color: var(--text); padding-bottom: 0.45rem; }
+  input[type=search] { min-width: 14rem; }
+  input[type=search].short { min-width: 8rem; }
+  select, input[type=number], input[type=search] {
     font: inherit;
     padding: 0.4rem 0.5rem;
     border-radius: 6px;
@@ -91,12 +115,27 @@
     background: var(--bg);
     color: var(--text);
   }
+
+  /* ---- Tables and shared bits ---- */
+  .result-count { color: var(--muted); font-size: 0.8rem; margin: 0 0 0.5rem; }
+  .table-wrap { overflow-x: auto; }
+  .nowrap { white-space: nowrap; }
+  .muted { color: var(--muted); }
+  .sub { color: var(--muted); font-size: 0.75rem; margin-top: 0.15rem; }
   table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
   th, td { text-align: left; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { cursor: pointer; user-select: none; color: var(--muted); font-weight: 600; white-space: nowrap; }
-  th:hover { color: var(--text); }
+  th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+  th[data-key] { cursor: pointer; user-select: none; }
+  th[data-key]:hover { color: var(--text); }
   th .arrow { font-size: 0.7rem; opacity: 0.6; }
   tr:hover td { background: var(--row-hover); }
+  a.job-link { color: var(--accent); text-decoration: none; }
+  a.job-link:hover, a.plain:hover { text-decoration: underline; }
+  a.plain { color: inherit; text-decoration: none; }
+  .empty, .loading, .error { color: var(--muted); padding: 1rem 0; font-size: 0.85rem; }
+  .error { color: #dc2626; }
+
+  /* ---- Matches ---- */
   .badge {
     display: inline-block;
     padding: 0.15rem 0.5rem;
@@ -110,20 +149,58 @@
   .badge.PARTIAL { background: var(--partial); }
   .flag { display: inline-block; margin-right: 0.3rem; padding: 0.05rem 0.35rem; border-radius: 4px; font-size: 0.7rem; border: 1px solid var(--border); color: var(--muted); }
   .flag.on { color: var(--accent-text); background: var(--accent); border-color: var(--accent); }
-  a.job-link { color: var(--accent); text-decoration: none; }
-  a.job-link:hover { text-decoration: underline; }
-  .empty, .loading, .error { color: var(--muted); padding: 1rem 0; font-size: 0.85rem; }
-  .error { color: #dc2626; }
+  .flag.new { color: var(--accent-text); background: var(--strong); border-color: var(--strong); }
+
+  /* ---- RelocateMe ---- */
+  #tab-relocateme .filters { margin-bottom: 0.75rem; }
+  #tab-relocateme a.job-link { font-weight: 600; }
+  .issue-summary { font-size: 0.85rem; margin: 0 0 0.75rem; }
+  .issue-summary .muted { margin-left: 0.25rem; }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 0 0 0.5rem; }
+  .bar .result-count { margin: 0; }
+  .pager { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; color: var(--muted); }
+  .li { font-size: 0.7rem; color: var(--muted); margin-left: 0.3rem; }
+  .tag {
+    display: inline-block; margin: 0 0.25rem 0.25rem 0; padding: 0.05rem 0.4rem;
+    border-radius: 4px; font-size: 0.7rem; border: 1px solid var(--border); color: var(--muted);
+  }
+  .tag.remote { color: #fff; background: var(--remote); border-color: var(--remote); }
+  .chip {
+    display: inline-block; margin: 0 0.25rem 0.25rem 0; padding: 0.1rem 0.45rem;
+    border-radius: 999px; font: inherit; font-size: 0.72rem; background: var(--chip-bg);
+    color: var(--text); border: 1px solid transparent; cursor: pointer;
+  }
+  .chip:hover, .chip.on { border-color: var(--accent); }
+
+  /* ---- Sources ---- */
   .companies-table td, .companies-table th { font-size: 0.8rem; }
-  h2 { font-size: 1rem; margin: 0 0 0.75rem; }
+
+  @media (max-width: 700px) {
+    body { padding: 1rem; }
+    .panel { padding: 0.75rem; }
+    .filters { gap: 0.6rem; }
+    .field { flex: 1 1 calc(50% - 0.6rem); min-width: 0; }
+    .field:has(#filter-search), .field:has(#f-q), .field:has(#f-week), .field:has(#f-section) { flex-basis: 100%; }
+    select, input[type=number], input[type=search] { min-width: 0 !important; width: 100%; }
+    #rm-clear-btn { flex: 1 1 100%; }
+    .bar { gap: 0.4rem; }
+    /* RelocateMe rows stack into cards on a phone; the matches table scrolls sideways instead. */
+    #tab-relocateme td.empty-cell { display: none; }
+    #tab-relocateme thead { display: none; }
+    #tab-relocateme tr { display: block; border-bottom: 1px solid var(--border); padding: 0.4rem 0; }
+    #tab-relocateme td { display: block; border: 0; padding: 0.15rem 0.2rem; }
+    #tab-relocateme td.week { color: var(--muted); font-size: 0.75rem; }
+  }
 </style>
 </head>
 <body>
 
-<h1>JobRadar</h1>
-<p class="subtitle">Multi-source relocation job aggregator &mdash; matches, sources and manual runs.</p>
-
 <div class="layout">
+
+  <div>
+    <h1>JobRadar</h1>
+    <p class="subtitle">Multi-source relocation job aggregator: scored matches, the RelocateMe weekly archive, sources and manual runs.</p>
+  </div>
 
   <div class="panel banner" id="run-banner">
     <div>
@@ -134,9 +211,54 @@
     <button id="run-now-btn" type="button">Run now</button>
   </div>
 
-  <div class="panel" id="matches-panel">
-    <h2>Matches</h2>
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <a href="#matches" role="tab" id="tablink-matches" data-tab="matches" aria-controls="tab-matches">Matches</a>
+    <a href="#relocateme" role="tab" id="tablink-relocateme" data-tab="relocateme" aria-controls="tab-relocateme">RelocateMe weekly</a>
+    <a href="#sources" role="tab" id="tablink-sources" data-tab="sources" aria-controls="tab-sources">Sources</a>
+  </nav>
+
+  <!-- ================= Matches ================= -->
+  <section class="panel" id="tab-matches" role="tabpanel" aria-labelledby="tablink-matches" hidden>
     <div class="filters">
+      <div class="field">
+        <label for="filter-search">Search</label>
+        <input type="search" id="filter-search" placeholder="Title, company, location, tag">
+      </div>
+      <div class="field">
+        <label for="filter-collected">Collected</label>
+        <select id="filter-collected">
+          <option value="">Any time</option>
+          <option value="new">Since my last visit</option>
+          <option value="24">Last 24 hours</option>
+          <option value="72">Last 3 days</option>
+          <option value="168">Last 7 days</option>
+          <option value="720">Last 30 days</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filter-source">Source</label>
+        <select id="filter-source"><option value="">All sources</option></select>
+      </div>
+      <div class="field">
+        <label for="filter-country">Country</label>
+        <select id="filter-country"><option value="">All countries</option></select>
+      </div>
+      <div class="field">
+        <label for="sort-select">Sort by</label>
+        <select id="sort-select">
+          <option value="collected:desc">Newest collected</option>
+          <option value="collected:asc">Oldest collected</option>
+          <option value="posted:desc">Newest posted</option>
+          <option value="score:desc">Highest score</option>
+          <option value="strength:desc">Strongest match</option>
+          <option value="title:asc">Title A&ndash;Z</option>
+          <option value="company:asc">Company A&ndash;Z</option>
+          <option value="source:asc">Source A&ndash;Z</option>
+          <option value="location:asc">Location A&ndash;Z</option>
+        </select>
+      </div>
+    </div>
+    <div class="filters secondary-filters">
       <div class="field">
         <label for="filter-strength">Strength</label>
         <select id="filter-strength">
@@ -158,20 +280,85 @@
           <option value="REMOVED">Removed</option>
         </select>
       </div>
-      <button id="apply-filters-btn" type="button">Apply</button>
+      <label class="field check"><input type="checkbox" id="filter-visa"> Visa</label>
+      <label class="field check"><input type="checkbox" id="filter-java"> Java</label>
+      <label class="field check"><input type="checkbox" id="filter-go"> Go</label>
       <button id="clear-filters-btn" type="button" class="secondary">Clear</button>
     </div>
+    <p class="result-count" id="matches-result-count"></p>
     <div id="matches-container">
       <div class="loading">Loading matches&hellip;</div>
     </div>
-  </div>
+  </section>
 
-  <div class="panel" id="companies-panel">
-    <h2>Sources</h2>
+  <!-- ================= RelocateMe weekly ================= -->
+  <section class="panel" id="tab-relocateme" role="tabpanel" aria-labelledby="tablink-relocateme" hidden>
+    <p class="tab-intro">Every job from The Global Move's weekly hand-curated lists, all sections, unscored.
+      The Back End and Full Stack sections are also ingested and scored under Matches.</p>
+    <div class="filters">
+      <div class="field">
+        <label for="f-q">Search</label>
+        <input type="search" id="f-q" placeholder="Title, company, location, keyword">
+      </div>
+      <div class="field">
+        <label for="f-week">Week</label>
+        <select id="f-week"><option value="">All weeks</option></select>
+      </div>
+      <div class="field">
+        <label for="f-section">Section</label>
+        <select id="f-section"><option value="">All sections</option></select>
+      </div>
+      <div class="field">
+        <label for="f-country">Country</label>
+        <select id="f-country"><option value="">All countries</option></select>
+      </div>
+      <div class="field">
+        <label for="f-remote">Work mode</label>
+        <select id="f-remote">
+          <option value="">Any</option>
+          <option value="false">On-site / relocation</option>
+          <option value="true">Remote</option>
+        </select>
+      </div>
+      <div class="field" id="rm-region-field" hidden>
+        <label for="f-region">Remote region</label>
+        <select id="f-region">
+          <option value="">Any region</option>
+          <option value="ANYWHERE">Anywhere</option>
+          <option value="EMEA">EMEA</option>
+          <option value="LATAM">LATAM</option>
+          <option value="APAC">APAC</option>
+          <option value="INDIA">India</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-keyword">Keyword</label>
+        <input type="search" id="f-keyword" placeholder="e.g. Java" class="short">
+      </div>
+      <button id="rm-clear-btn" type="button" class="secondary">Clear</button>
+    </div>
+
+    <p class="issue-summary" id="rm-issue-summary" hidden></p>
+
+    <div class="bar">
+      <span class="result-count" id="rm-result-count"></span>
+      <span class="spacer"></span>
+      <div class="pager">
+        <button id="rm-prev-btn" type="button" class="secondary">Prev</button>
+        <span id="rm-page-label"></span>
+        <button id="rm-next-btn" type="button" class="secondary">Next</button>
+      </div>
+    </div>
+
+    <div class="table-wrap" id="rm-jobs-container"><div class="loading">Loading jobs&hellip;</div></div>
+  </section>
+
+  <!-- ================= Sources ================= -->
+  <section class="panel" id="tab-sources" role="tabpanel" aria-labelledby="tablink-sources" hidden>
     <div id="companies-container">
       <div class="loading">Loading sources&hellip;</div>
     </div>
-  </div>
+  </section>
 
 </div>
 
@@ -179,32 +366,21 @@
 (function () {
   'use strict';
 
-  var state = {
-    matches: [],
-    sortKey: 'score',
-    sortDir: 'desc'
-  };
-
-  var columns = [
-    { key: 'strength', label: 'Strength' },
-    { key: 'score', label: 'Score' },
-    { key: 'title', label: 'Title' },
-    { key: 'company', label: 'Company' },
-    { key: 'location', label: 'Location' },
-    { key: 'stack', label: 'Java/Go' },
-    { key: 'salaryRaw', label: 'Salary' },
-    { key: 'link', label: 'Link' }
-  ];
+  // ===================================================================
+  // Shared helpers
+  // ===================================================================
 
   function qs(id) { return document.getElementById(id); }
 
   function escapeHtml(value) {
-    if (value === null || value === undefined) return '';
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+    return String(value == null ? '' : value)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // Only http(s) links are rendered as links; anything else from a feed is shown as text.
+  function safeUrl(url) {
+    return /^https?:\/\//i.test(url || '') ? url : null;
   }
 
   function fetchJson(url, options) {
@@ -220,144 +396,676 @@
     });
   }
 
-  // ---- Matches ----
-
-  function hasReason(reasons, needle) {
-    if (!reasons) return false;
-    return reasons.some(function (r) { return r.toLowerCase().indexOf(needle) !== -1; });
+  function toMillis(iso) {
+    if (!iso) return null;
+    var t = Date.parse(iso);
+    return isNaN(t) ? null : t;
   }
 
-  function loadMatches() {
-    var container = qs('matches-container');
-    container.innerHTML = '<div class="loading">Loading matches&hellip;</div>';
+  function relativeTime(iso) {
+    var t = toMillis(iso);
+    if (t === null) return '&mdash;';
+    var mins = Math.round((Date.now() - t) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return mins + ' min ago';
+    var hours = Math.round(mins / 60);
+    if (hours < 24) return hours + ' h ago';
+    var days = Math.round(hours / 24);
+    if (days < 60) return days + ' d ago';
+    return new Date(t).toISOString().slice(0, 10);
+  }
 
-    var params = new URLSearchParams();
-    var strength = qs('filter-strength').value;
-    var minScore = qs('filter-min-score').value;
-    var status = qs('filter-status').value;
-    if (strength) params.set('strength', strength);
-    if (minScore) params.set('minScore', minScore);
-    if (status) params.set('status', status);
+  function exactTime(iso) {
+    var t = toMillis(iso);
+    return t === null ? '' : new Date(t).toLocaleString(undefined, { hour12: false });
+  }
 
-    var url = '/api/matches' + (params.toString() ? '?' + params.toString() : '');
+  function formatDate(iso) {
+    var d = new Date(iso);
+    return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
 
-    fetchJson(url)
-      .then(function (data) {
-        state.matches = data || [];
-        renderMatches();
-      })
-      .catch(function (err) {
-        container.innerHTML = '<div class="error">Failed to load matches: ' + escapeHtml(err.message) + '</div>';
+  // Adds a placeholder <option> for a value restored from storage or the URL before the
+  // real options have loaded, so the selection sticks.
+  function seedOption(el, value) {
+    if (el.tagName === 'SELECT' && value && !el.querySelector('option[value="' + CSS.escape(value) + '"]')) {
+      el.insertAdjacentHTML('beforeend', '<option value="' + escapeHtml(value) + '">' + escapeHtml(value) + '</option>');
+    }
+  }
+
+  // ===================================================================
+  // Matches tab: fetches every match once and filters/sorts client-side.
+  // Its view (filters + sort) persists in localStorage.
+  // ===================================================================
+
+  var matchesTab = (function () {
+    var STORAGE_KEY = 'jobradar.matches.view';
+    var VISIT_KEY = 'jobradar.lastVisit';
+    var STRENGTH_RANK = { STRONG: 3, MATCH: 2, PARTIAL: 1 };
+
+    var state = {
+      matches: [],
+      // When this browser last opened the page; jobs collected after it get a "new" badge.
+      previousVisit: null,
+      sortKey: 'collected',
+      sortDir: 'desc'
+    };
+
+    // Every sort key and its direction on first use. Posted and source have no column of
+    // their own (they're the muted second lines), so they're reachable from "Sort by".
+    var SORT_DEFAULT_DIR = {
+      collected: 'desc', posted: 'desc', strength: 'desc', score: 'desc',
+      title: 'asc', company: 'asc', source: 'asc', location: 'asc', salaryRaw: 'asc'
+    };
+
+    // sortable: false = header not clickable.
+    var columns = [
+      { key: 'collected', label: 'Collected' },
+      { key: 'strength', label: 'Strength' },
+      { key: 'score', label: 'Score' },
+      { key: 'title', label: 'Title' },
+      { key: 'company', label: 'Company' },
+      { key: 'location', label: 'Location' },
+      { key: 'stack', label: 'Java/Go', sortable: false },
+      { key: 'salaryRaw', label: 'Salary' },
+      { key: 'link', label: 'Link', sortable: false }
+    ];
+
+    // Client-side filters re-render instantly; server-side ones refetch.
+    var clientFilterIds = ['filter-search', 'filter-collected', 'filter-source', 'filter-country',
+      'filter-visa', 'filter-java', 'filter-go'];
+    var serverFilterIds = ['filter-strength', 'filter-min-score', 'filter-status'];
+
+    // ---- Persisted view; best effort, the tab works without it ----
+
+    function fieldValue(el) { return el.type === 'checkbox' ? el.checked : el.value; }
+
+    function saveView() {
+      var view = { sortKey: state.sortKey, sortDir: state.sortDir, filters: {} };
+      clientFilterIds.concat(serverFilterIds).forEach(function (id) { view.filters[id] = fieldValue(qs(id)); });
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(view)); } catch (e) { /* ignore */ }
+    }
+
+    function restoreView() {
+      var view = null;
+      try { view = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null'); } catch (e) { view = null; }
+      if (!view) return;
+      if (view.sortKey && SORT_DEFAULT_DIR[view.sortKey]) {
+        state.sortKey = view.sortKey;
+        state.sortDir = view.sortDir === 'asc' ? 'asc' : 'desc';
+      }
+      Object.keys(view.filters || {}).forEach(function (id) {
+        var el = qs(id);
+        if (!el) return;
+        var value = view.filters[id];
+        if (el.type === 'checkbox') { el.checked = !!value; return; }
+        seedOption(el, value);
+        el.value = value;
       });
-  }
+    }
 
-  function sortedMatches() {
-    var list = state.matches.slice();
-    var key = state.sortKey;
-    var dir = state.sortDir === 'asc' ? 1 : -1;
+    function hasReason(reasons, needle) {
+      if (!reasons) return false;
+      return reasons.some(function (r) { return r.toLowerCase().indexOf(needle) !== -1; });
+    }
 
-    function value(m) {
+    function isJava(m) { return hasReason(m.reasons, 'java'); }
+    // Match engine reason text is "+2 Go present"; a bare "go" substring also hits unrelated reasons.
+    function isGo(m) { return hasReason(m.reasons, 'go present'); }
+
+    function isNew(m) {
+      var seen = toMillis(m.firstSeen);
+      return state.previousVisit !== null && seen !== null && seen > state.previousVisit;
+    }
+
+    // Runs once per page load, whichever tab opens first.
+    function recordVisit() {
+      try {
+        var prev = Number(localStorage.getItem(VISIT_KEY));
+        state.previousVisit = prev > 0 ? prev : null;
+        localStorage.setItem(VISIT_KEY, String(Date.now()));
+      } catch (e) { state.previousVisit = null; }
+    }
+
+    function loadMatches() {
+      var container = qs('matches-container');
+      container.innerHTML = '<div class="loading">Loading matches&hellip;</div>';
+
+      var params = new URLSearchParams();
+      var strength = qs('filter-strength').value;
+      var minScore = qs('filter-min-score').value;
+      var status = qs('filter-status').value;
+      if (strength) params.set('strength', strength);
+      if (minScore) params.set('minScore', minScore);
+      if (status) params.set('status', status);
+
+      var url = '/api/matches' + (params.toString() ? '?' + params.toString() : '');
+
+      return fetchJson(url)
+        .then(function (data) {
+          state.matches = data || [];
+          populateOptions();
+          renderMatches();
+        })
+        .catch(function (err) {
+          container.innerHTML = '<div class="error">Failed to load matches: ' + escapeHtml(err.message) + '</div>';
+        });
+    }
+
+    // Rebuilds a <select> from the loaded data, with per-value counts, keeping the selection.
+    function fillSelect(id, allLabel, valueOf) {
+      var el = qs(id);
+      var current = el.value;
+      var counts = {};
+      state.matches.forEach(function (m) {
+        var v = valueOf(m);
+        if (v) counts[v] = (counts[v] || 0) + 1;
+      });
+      var values = Object.keys(counts).sort();
+      if (current && values.indexOf(current) === -1) values.unshift(current);
+      el.innerHTML = '<option value="">' + allLabel + '</option>' + values.map(function (v) {
+        return '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + ' (' + (counts[v] || 0) + ')</option>';
+      }).join('');
+      el.value = current;
+    }
+
+    function populateOptions() {
+      fillSelect('filter-source', 'All sources', function (m) { return m.source; });
+      fillSelect('filter-country', 'All countries', function (m) { return m.country; });
+    }
+
+    function filteredMatches() {
+      var search = qs('filter-search').value.trim().toLowerCase();
+      var collected = qs('filter-collected').value;
+      var source = qs('filter-source').value;
+      var country = qs('filter-country').value;
+      var visa = qs('filter-visa').checked;
+      var java = qs('filter-java').checked;
+      var go = qs('filter-go').checked;
+      var cutoff = collected && collected !== 'new' ? Date.now() - Number(collected) * 3600000 : null;
+      var terms = search ? search.split(/\s+/) : [];
+
+      return state.matches.filter(function (m) {
+        if (source && m.source !== source) return false;
+        if (country && m.country !== country) return false;
+        if (visa && !m.visaFlag) return false;
+        if (java && !isJava(m)) return false;
+        if (go && !isGo(m)) return false;
+        if (collected === 'new' && !isNew(m)) return false;
+        if (cutoff !== null) {
+          var seen = toMillis(m.firstSeen);
+          if (seen === null || seen < cutoff) return false;
+        }
+        if (terms.length) {
+          var haystack = [m.title, m.company, m.city, m.country, m.source, m.salaryRaw]
+            .concat(m.techTags || []).join(' ').toLowerCase();
+          // Every word must appear somewhere, in any order.
+          if (!terms.every(function (t) { return haystack.indexOf(t) !== -1; })) return false;
+        }
+        return true;
+      });
+    }
+
+    function sortValue(m, key) {
       switch (key) {
-        case 'strength': return m.strength || '';
-        case 'score': return m.score || 0;
-        case 'title': return (m.title || '').toLowerCase();
-        case 'company': return (m.company || '').toLowerCase();
-        case 'location': return ((m.city || '') + (m.country || '')).toLowerCase();
-        case 'salaryRaw': return (m.salaryRaw || '').toLowerCase();
-        default: return 0;
+        case 'collected': return toMillis(m.firstSeen);
+        case 'posted': return toMillis(m.postedAt);
+        case 'strength': return STRENGTH_RANK[m.strength] || 0;
+        case 'score': return typeof m.score === 'number' ? m.score : null;
+        case 'title': return (m.title || '').toLowerCase() || null;
+        case 'company': return (m.company || '').toLowerCase() || null;
+        case 'location': return [m.country, m.city].filter(Boolean).join(' ').toLowerCase() || null;
+        case 'source': return (m.source || '').toLowerCase() || null;
+        case 'salaryRaw': return (m.salaryRaw || '').toLowerCase() || null;
+        default: return null;
       }
     }
 
-    list.sort(function (a, b) {
-      var va = value(a), vb = value(b);
-      if (va < vb) return -1 * dir;
-      if (va > vb) return 1 * dir;
-      return 0;
-    });
-    return list;
-  }
-
-  function renderMatches() {
-    var container = qs('matches-container');
-    if (!state.matches.length) {
-      container.innerHTML = '<div class="empty">No matches for the current filters.</div>';
-      return;
+    function sortList(list) {
+      var key = state.sortKey;
+      var dir = state.sortDir === 'asc' ? 1 : -1;
+      return list.slice().sort(function (a, b) {
+        var va = sortValue(a, key), vb = sortValue(b, key);
+        // Missing values sink to the bottom in either direction.
+        if (va === null && vb !== null) return 1;
+        if (vb === null && va !== null) return -1;
+        if (va !== null && va < vb) return -1 * dir;
+        if (va !== null && va > vb) return 1 * dir;
+        // Ties: newest collected, then highest score.
+        var ca = toMillis(a.firstSeen) || 0, cb = toMillis(b.firstSeen) || 0;
+        if (ca !== cb) return cb - ca;
+        return (b.score || 0) - (a.score || 0);
+      });
     }
 
-    var rows = sortedMatches().map(function (m) {
-      var isJava = hasReason(m.reasons, 'java');
-      var isGo = hasReason(m.reasons, 'go-present') || hasReason(m.reasons, 'go');
-      var location = [m.city, m.country].filter(Boolean).join(', ') || '&mdash;';
-      return '<tr>'
-        + '<td><span class="badge ' + escapeHtml(m.strength) + '">' + escapeHtml(m.strength) + '</span></td>'
-        + '<td>' + (typeof m.score === 'number' ? m.score.toFixed(1) : '') + '</td>'
-        + '<td>' + escapeHtml(m.title) + (m.visaFlag ? ' <span class="flag on">visa</span>' : '') + '</td>'
-        + '<td>' + escapeHtml(m.company) + '</td>'
-        + '<td>' + location + '</td>'
-        + '<td><span class="flag ' + (isJava ? 'on' : '') + '">Java</span>'
-        +     '<span class="flag ' + (isGo ? 'on' : '') + '">Go</span></td>'
-        + '<td>' + (m.salaryRaw ? escapeHtml(m.salaryRaw) : '&mdash;') + '</td>'
-        + '<td><a class="job-link" href="' + escapeHtml(m.url) + '" target="_blank" rel="noopener">open</a></td>'
-        + '</tr>';
-    }).join('');
-
-    var head = columns.map(function (col) {
-      var arrow = '';
-      if (state.sortKey === col.key) {
-        arrow = ' <span class="arrow">' + (state.sortDir === 'asc' ? '▲' : '▼') + '</span>';
+    // Shows the current sort in "Sort by"; a header-click combination not in the list
+    // (e.g. Score ascending) gets a temporary option so the select never lies.
+    function syncSortSelect() {
+      var el = qs('sort-select');
+      var value = state.sortKey + ':' + state.sortDir;
+      var custom = el.querySelector('option[data-custom]');
+      if (custom) custom.remove();
+      if (!el.querySelector('option[value="' + value + '"]')) {
+        var label = (columns.filter(function (c) { return c.key === state.sortKey; })[0] || { label: state.sortKey }).label;
+        el.insertAdjacentHTML('beforeend', '<option data-custom value="' + escapeHtml(value) + '">'
+          + escapeHtml(label) + (state.sortDir === 'asc' ? ' ascending' : ' descending') + '</option>');
       }
-      return '<th data-key="' + col.key + '">' + col.label + arrow + '</th>';
-    }).join('');
+      el.value = value;
+    }
 
-    container.innerHTML = '<table><thead><tr>' + head + '</tr></thead><tbody>' + rows + '</tbody></table>';
+    function renderMatches() {
+      var container = qs('matches-container');
+      var countEl = qs('matches-result-count');
+      if (!state.matches.length) {
+        countEl.textContent = '';
+        container.innerHTML = '<div class="empty">No matches for the current filters.</div>';
+        return;
+      }
 
-    Array.prototype.forEach.call(container.querySelectorAll('th[data-key]'), function (th) {
-      th.addEventListener('click', function () {
+      var visible = sortList(filteredMatches());
+      var newCount = state.matches.filter(isNew).length;
+      countEl.textContent = 'Showing ' + visible.length + ' of ' + state.matches.length + ' matches'
+        + (newCount ? ' · ' + newCount + ' new since your last visit' : '');
+
+      if (!visible.length) {
+        container.innerHTML = '<div class="empty">No matches for the current filters.</div>';
+        return;
+      }
+
+      var rows = visible.map(function (m) {
+        var location = [m.city, m.country].filter(Boolean).map(escapeHtml).join(', ') || '&mdash;';
+        var url = safeUrl(m.url);
+        return '<tr>'
+          + '<td class="nowrap"><div title="' + escapeHtml(exactTime(m.firstSeen)) + '">' + relativeTime(m.firstSeen) + '</div>'
+          +     (m.postedAt ? '<div class="sub" title="' + escapeHtml(exactTime(m.postedAt)) + '">posted ' + relativeTime(m.postedAt) + '</div>' : '') + '</td>'
+          + '<td><span class="badge ' + escapeHtml(m.strength) + '">' + escapeHtml(m.strength) + '</span></td>'
+          + '<td>' + (typeof m.score === 'number' ? m.score.toFixed(1) : '') + '</td>'
+          + '<td>' + escapeHtml(m.title)
+          +     (isNew(m) ? ' <span class="flag new">new</span>' : '')
+          +     (m.visaFlag ? ' <span class="flag on">visa</span>' : '')
+          +     (m.status === 'REMOVED' ? ' <span class="flag">removed</span>' : '') + '</td>'
+          + '<td>' + escapeHtml(m.company) + '<div class="sub">' + escapeHtml(m.source) + '</div></td>'
+          + '<td>' + location + '</td>'
+          + '<td class="nowrap"><span class="flag ' + (isJava(m) ? 'on' : '') + '">Java</span>'
+          +     '<span class="flag ' + (isGo(m) ? 'on' : '') + '">Go</span></td>'
+          + '<td>' + (m.salaryRaw ? escapeHtml(m.salaryRaw) : '&mdash;') + '</td>'
+          + '<td>' + (url ? '<a class="job-link" href="' + escapeHtml(url) + '" target="_blank" rel="noopener noreferrer">open</a>' : '&mdash;') + '</td>'
+          + '</tr>';
+      }).join('');
+
+      var head = columns.map(function (col) {
+        if (col.sortable === false) return '<th>' + col.label + '</th>';
+        var arrow = '';
+        if (state.sortKey === col.key) {
+          arrow = ' <span class="arrow">' + (state.sortDir === 'asc' ? '▲' : '▼') + '</span>';
+        }
+        return '<th data-key="' + col.key + '">' + col.label + arrow + '</th>';
+      }).join('');
+
+      container.innerHTML = '<div class="table-wrap"><table><thead><tr>' + head + '</tr></thead><tbody>'
+        + rows + '</tbody></table></div>';
+    }
+
+    function init() {
+      var searchTimer = null;
+      clientFilterIds.forEach(function (id) {
+        qs(id).addEventListener(id === 'filter-search' ? 'input' : 'change', function () {
+          clearTimeout(searchTimer);
+          searchTimer = setTimeout(function () { saveView(); renderMatches(); }, id === 'filter-search' ? 150 : 0);
+        });
+      });
+      qs('sort-select').addEventListener('change', function () {
+        var parts = qs('sort-select').value.split(':');
+        state.sortKey = parts[0];
+        state.sortDir = parts[1] === 'asc' ? 'asc' : 'desc';
+        syncSortSelect();
+        saveView();
+        renderMatches();
+      });
+      serverFilterIds.forEach(function (id) {
+        qs(id).addEventListener('change', function () { saveView(); loadMatches(); });
+      });
+      qs('clear-filters-btn').addEventListener('click', function () {
+        clientFilterIds.concat(serverFilterIds).forEach(function (id) {
+          var el = qs(id);
+          if (el.type === 'checkbox') el.checked = false;
+          else el.value = '';
+        });
+        state.sortKey = 'collected';
+        state.sortDir = 'desc';
+        syncSortSelect();
+        saveView();
+        loadMatches();
+      });
+      // Delegated once, since the table is re-rendered on every filter change.
+      qs('matches-container').addEventListener('click', function (e) {
+        var th = e.target.closest('th[data-key]');
+        if (!th) return;
         var key = th.getAttribute('data-key');
-        if (key === 'link') return;
         if (state.sortKey === key) {
           state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
         } else {
           state.sortKey = key;
-          state.sortDir = key === 'score' ? 'desc' : 'asc';
+          state.sortDir = SORT_DEFAULT_DIR[key];
         }
+        syncSortSelect();
+        saveView();
         renderMatches();
       });
-    });
-  }
 
-  // ---- Companies / sources ----
+      restoreView();
+      syncSortSelect();
+      return loadMatches();
+    }
 
-  function loadCompanies() {
-    var container = qs('companies-container');
-    fetchJson('/api/companies')
-      .then(function (data) {
-        if (!data || !data.length) {
-          container.innerHTML = '<div class="empty">No companies configured.</div>';
-          return;
-        }
-        var rows = data.map(function (c) {
-          return '<tr>'
-            + '<td>' + escapeHtml(c.name) + '</td>'
-            + '<td>' + escapeHtml(c.ats) + '</td>'
-            + '<td>' + c.activeCount + '</td>'
-            + '</tr>';
-        }).join('');
-        container.innerHTML = '<table class="companies-table"><thead><tr>'
-          + '<th>Company</th><th>ATS</th><th>Active</th>'
-          + '</tr></thead><tbody>' + rows + '</tbody></table>';
-      })
-      .catch(function (err) {
-        container.innerHTML = '<div class="error">Failed to load sources: ' + escapeHtml(err.message) + '</div>';
+    return { recordVisit: recordVisit, init: init, refresh: loadMatches };
+  })();
+
+  // ===================================================================
+  // RelocateMe tab: server-side filtering and paging over the weekly archive.
+  // Its filters live in the URL hash (#relocateme?week=42&section=...), so a view can be
+  // bookmarked and Back/Forward step through filter changes.
+  // ===================================================================
+
+  var relocatemeTab = (function () {
+    var API = 'api/relocateme';
+    var PAGE_SIZE = 50;
+    var FILTERS = ['q', 'week', 'section', 'country', 'remote', 'region', 'keyword'];
+    var countryNames = typeof Intl !== 'undefined' && Intl.DisplayNames
+      ? new Intl.DisplayNames(['en'], { type: 'region' }) : null;
+
+    // loadedQuery: the query string last fetched, so returning to the tab doesn't refetch.
+    var state = { page: 0, issues: [], request: 0, loadedQuery: null };
+
+    function countryName(code) {
+      try { return (countryNames && countryNames.of(code)) || code; } catch (e) { return code; }
+    }
+
+    // ---- Route params <-> filters
+
+    function applyParams(params) {
+      FILTERS.forEach(function (key) {
+        var el = qs('f-' + key);
+        var value = params.get(key) || '';
+        seedOption(el, value);
+        el.value = value;
       });
-  }
+      state.page = Math.max(0, parseInt(params.get('page') || '0', 10) || 0);
+      syncRegionField();
+    }
 
-  // ---- Last run banner ----
+    function filterParams() {
+      var params = new URLSearchParams();
+      FILTERS.forEach(function (key) {
+        var value = qs('f-' + key).value.trim();
+        if (value) params.set(key, value);
+      });
+      if (qs('f-remote').value !== 'true') params.delete('region');
+      return params;
+    }
 
+    function currentQuery() {
+      var params = filterParams();
+      if (state.page > 0) params.set('page', state.page);
+      return params.toString();
+    }
+
+    function currentHash() {
+      var query = currentQuery();
+      return '#relocateme' + (query ? '?' + query : '');
+    }
+
+    function writeUrl(push) {
+      var hash = currentHash();
+      // Tab link remembers the filtered view, so leaving and coming back keeps it.
+      qs('tablink-relocateme').setAttribute('href', hash);
+      if (hash !== location.hash) {
+        history[push ? 'pushState' : 'replaceState'](null, '', hash);
+      }
+    }
+
+    function syncRegionField() {
+      var remote = qs('f-remote').value === 'true';
+      qs('rm-region-field').hidden = !remote;
+      if (!remote) qs('f-region').value = '';
+    }
+
+    // ---- Filter options
+
+    function loadOptions() {
+      return Promise.all([
+        fetchJson(API + '/issues'),
+        fetchJson(API + '/sections'),
+        fetchJson(API + '/countries')
+      ]).then(function (results) {
+        state.issues = results[0] || [];
+        var sections = results[1] || {};
+        var countries = results[2] || {};
+        fillSelect('f-week', 'All weeks', state.issues.map(function (i) {
+          return { value: i.weekNumber, label: 'Week ' + i.weekNumber + ' · ' + formatDate(i.postDate) + ' (' + i.jobCount + ')' };
+        }));
+        fillSelect('f-section', 'All sections', Object.keys(sections).sort().map(function (s) {
+          return { value: s, label: s + ' (' + sections[s] + ')' };
+        }));
+        fillSelect('f-country', 'All countries', Object.keys(countries).map(function (code) {
+          return { value: code, label: countryName(code) + ' (' + countries[code] + ')' };
+        }).sort(function (a, b) { return a.label.localeCompare(b.label); }));
+      });
+    }
+
+    function fillSelect(id, allLabel, options) {
+      var el = qs(id);
+      var current = el.value;
+      el.innerHTML = '<option value="">' + allLabel + '</option>' + options.map(function (o) {
+        return '<option value="' + escapeHtml(o.value) + '">' + escapeHtml(o.label) + '</option>';
+      }).join('');
+      el.value = current;
+    }
+
+    // ---- Jobs
+
+    function loadJobs() {
+      var params = filterParams();
+      params.set('page', state.page);
+      params.set('size', PAGE_SIZE);
+      var request = ++state.request;
+      var container = qs('rm-jobs-container');
+      state.loadedQuery = currentQuery();
+      container.setAttribute('aria-busy', 'true');
+      renderIssueSummary();
+      return fetchJson(API + '/jobs?' + params).then(function (data) {
+        if (request !== state.request) return; // a newer request superseded this one
+        render(data);
+      }).catch(function (err) {
+        if (request !== state.request) return;
+        state.loadedQuery = null;
+        container.innerHTML = '<div class="error">Failed to load jobs: ' + escapeHtml(err.message) + '</div>';
+        qs('rm-result-count').textContent = '';
+      }).then(function () {
+        container.removeAttribute('aria-busy');
+      });
+    }
+
+    function renderIssueSummary() {
+      var el = qs('rm-issue-summary');
+      var week = qs('f-week').value;
+      var issue = week && state.issues.filter(function (i) { return String(i.weekNumber) === week; })[0];
+      if (!issue) { el.hidden = true; return; }
+      el.hidden = false;
+      el.innerHTML = '<strong>' + escapeHtml(issue.title) + '</strong>'
+        + '<span class="muted">' + escapeHtml(formatDate(issue.postDate))
+        + (issue.subtitle ? ' · ' + escapeHtml(issue.subtitle) : '') + '</span>';
+    }
+
+    function render(data) {
+      var from = data.total === 0 ? 0 : data.page * data.size + 1;
+      var to = Math.min(data.total, (data.page + 1) * data.size);
+      qs('rm-result-count').textContent = data.total === 0 ? 'No jobs'
+        : from + '–' + to + ' of ' + data.total.toLocaleString('en-GB') + ' jobs';
+      qs('rm-page-label').textContent = data.totalPages > 1 ? 'Page ' + (data.page + 1) + ' of ' + data.totalPages : '';
+      qs('rm-prev-btn').disabled = data.page <= 0;
+      qs('rm-next-btn').disabled = data.page + 1 >= data.totalPages;
+
+      var container = qs('rm-jobs-container');
+      if (!data.items.length) {
+        container.innerHTML = '<div class="empty">No jobs match these filters.</div>';
+        return;
+      }
+      var activeKeyword = qs('f-keyword').value.trim().toLowerCase();
+      var rows = data.items.map(function (job) {
+        var apply = safeUrl(job.applyUrl);
+        var title = apply
+          ? '<a class="job-link" href="' + escapeHtml(apply) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(job.title) + '</a>'
+          : '<strong>' + escapeHtml(job.title) + '</strong>';
+        var linkedin = safeUrl(job.companyLinkedinUrl);
+        var company = escapeHtml(job.company || '');
+        if (linkedin) {
+          company += '<a class="li" href="' + escapeHtml(linkedin) + '" target="_blank" rel="noopener noreferrer" title="Company on LinkedIn">LinkedIn</a>';
+        }
+        var where = [];
+        if (job.remote) {
+          where.push('<span class="tag remote">Remote' + (job.remoteRegion ? ' · ' + escapeHtml(job.remoteRegion) : '') + '</span>');
+        }
+        if (job.location) where.push('<div>' + escapeHtml(job.location) + '</div>');
+        if (job.countryCodes.length > 1 || (job.countryCodes.length === 1 && !job.location)) {
+          where.push('<div class="sub">' + job.countryCodes.map(function (c) { return escapeHtml(countryName(c)); }).join(', ') + '</div>');
+        }
+        var keywords = job.keywords.map(function (k) {
+          var on = k.toLowerCase() === activeKeyword ? ' on' : '';
+          return '<button type="button" class="chip' + on + '" data-keyword="' + escapeHtml(k) + '">' + escapeHtml(k) + '</button>';
+        }).join('');
+        return '<tr>'
+          + '<td class="week nowrap">Week ' + escapeHtml(job.weekNumber) + '<div class="sub">' + escapeHtml(formatDate(job.postDate)) + '</div></td>'
+          + '<td>' + title + '<div class="sub">' + escapeHtml(job.section) + '</div></td>'
+          + '<td>' + company + (job.industrySize ? '<div class="sub">' + escapeHtml(job.industrySize) + '</div>' : '') + '</td>'
+          + '<td>' + (where.join('') || '<span class="muted">Not stated</span>') + '</td>'
+          + (keywords ? '<td>' + keywords + '</td>' : '<td class="empty-cell"><span class="muted">–</span></td>')
+          + '</tr>';
+      }).join('');
+      container.innerHTML = '<table><thead><tr>'
+        + '<th>Week</th><th>Job</th><th>Company</th><th>Location</th><th>Keywords</th>'
+        + '</tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+
+    // ---- Events
+
+    function onFilterChange() {
+      state.page = 0;
+      syncRegionField();
+      writeUrl(true);
+      loadJobs();
+    }
+
+    function goToPage(page) {
+      state.page = page;
+      writeUrl(true);
+      loadJobs();
+      qs('tab-relocateme').scrollIntoView();
+    }
+
+    function init() {
+      var debounceTimer = null;
+      ['week', 'section', 'country', 'remote', 'region'].forEach(function (key) {
+        qs('f-' + key).addEventListener('change', onFilterChange);
+      });
+      ['q', 'keyword'].forEach(function (key) {
+        qs('f-' + key).addEventListener('input', function () {
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(function () {
+            state.page = 0;
+            writeUrl(false);
+            loadJobs();
+          }, 300);
+        });
+      });
+      qs('rm-clear-btn').addEventListener('click', function () {
+        FILTERS.forEach(function (key) { qs('f-' + key).value = ''; });
+        onFilterChange();
+      });
+      qs('rm-prev-btn').addEventListener('click', function () { goToPage(state.page - 1); });
+      qs('rm-next-btn').addEventListener('click', function () { goToPage(state.page + 1); });
+      qs('rm-jobs-container').addEventListener('click', function (e) {
+        var chip = e.target.closest('.chip');
+        if (!chip) return;
+        var keyword = chip.getAttribute('data-keyword');
+        qs('f-keyword').value = qs('f-keyword').value.trim().toLowerCase() === keyword.toLowerCase() ? '' : keyword;
+        onFilterChange();
+      });
+
+      // Options first, so a week/section/country from the URL selects its real labelled option.
+      return loadOptions().catch(function (err) {
+        qs('rm-jobs-container').innerHTML = '<div class="error">Failed to load filters: ' + escapeHtml(err.message) + '</div>';
+      });
+    }
+
+    // Called on every navigation to this tab with the params after "#relocateme?".
+    function show(params) {
+      applyParams(params);
+      qs('tablink-relocateme').setAttribute('href', currentHash());
+      if (currentQuery() !== state.loadedQuery) loadJobs();
+    }
+
+    return { init: init, show: show };
+  })();
+
+  // ===================================================================
+  // Sources tab
+  // ===================================================================
+
+  var sourcesTab = (function () {
+    function loadCompanies() {
+      var container = qs('companies-container');
+      return fetchJson('/api/companies')
+        .then(function (data) {
+          if (!data || !data.length) {
+            container.innerHTML = '<div class="empty">No companies configured.</div>';
+            return;
+          }
+          var rows = data.map(function (c) {
+            return '<tr>'
+              + '<td>' + escapeHtml(c.name) + '</td>'
+              + '<td>' + escapeHtml(c.ats) + '</td>'
+              + '<td>' + escapeHtml(c.activeCount) + '</td>'
+              + '</tr>';
+          }).join('');
+          container.innerHTML = '<table class="companies-table"><thead><tr>'
+            + '<th>Company</th><th>ATS</th><th>Active</th>'
+            + '</tr></thead><tbody>' + rows + '</tbody></table>';
+        })
+        .catch(function (err) {
+          container.innerHTML = '<div class="error">Failed to load sources: ' + escapeHtml(err.message) + '</div>';
+        });
+    }
+
+    return { init: loadCompanies, refresh: loadCompanies };
+  })();
+
+  // ===================================================================
+  // Last-run banner and "Run now"
+  // ===================================================================
+
+  // stats is per source: { "greenhouse:imc": { fetched, new, updated, removed, errors }, ... }.
+  // The banner shows the totals across sources.
   function formatStats(stats) {
     if (!stats) return '';
-    return Object.keys(stats).map(function (key) {
-      return '<span><b>' + escapeHtml(stats[key]) + '</b> ' + escapeHtml(key) + '</span>';
+    var totals = {};
+    var order = [];
+    Object.keys(stats).forEach(function (source) {
+      var s = stats[source];
+      if (!s || typeof s !== 'object') return;
+      Object.keys(s).forEach(function (k) {
+        if (typeof s[k] !== 'number') return;
+        if (!(k in totals)) { totals[k] = 0; order.push(k); }
+        totals[k] += s[k];
+      });
+    });
+    var preferred = ['fetched', 'new', 'updated', 'removed', 'errors'];
+    order.sort(function (a, b) {
+      var ia = preferred.indexOf(a), ib = preferred.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+    return '<span><b>' + Object.keys(stats).length + '</b> sources</span>' + order.map(function (k) {
+      return '<span><b>' + totals[k] + '</b> ' + escapeHtml(k) + '</span>';
     }).join('');
   }
 
@@ -372,8 +1080,8 @@
           return;
         }
         var run = data[0];
-        var when = run.finishedAt || run.startedAt || 'unknown time';
-        summary.textContent = '#' + run.id + ' at ' + when;
+        var when = run.finishedAt || run.startedAt;
+        summary.textContent = '#' + run.id + ' at ' + (when ? exactTime(when) + ' (' + relativeTime(when) + ')' : 'unknown time');
         statsEl.innerHTML = formatStats(run.stats);
       })
       .catch(function (err) {
@@ -382,19 +1090,18 @@
       });
   }
 
-  function refreshAll() {
-    loadLastRun();
-    loadMatches();
-    loadCompanies();
-  }
-
+  // A run ingests job sources (matches, sources). The RelocateMe archive fills on its own
+  // schedule, so that tab isn't refreshed here.
   function runNow() {
     var btn = qs('run-now-btn');
     btn.disabled = true;
     btn.textContent = 'Running…';
     fetchJson('/api/run', { method: 'POST' })
       .then(function () {
-        refreshAll();
+        loadLastRun();
+        ['matches', 'sources'].forEach(function (name) {
+          if (router.initialized(name)) tabs[name].refresh();
+        });
       })
       .catch(function (err) {
         alert('Ingest run failed: ' + err.message);
@@ -405,16 +1112,55 @@
       });
   }
 
-  qs('run-now-btn').addEventListener('click', runNow);
-  qs('apply-filters-btn').addEventListener('click', loadMatches);
-  qs('clear-filters-btn').addEventListener('click', function () {
-    qs('filter-strength').value = '';
-    qs('filter-min-score').value = '';
-    qs('filter-status').value = '';
-    loadMatches();
-  });
+  // ===================================================================
+  // Router: #<tab>[?<params>]. Each tab initializes on first visit only.
+  // ===================================================================
 
-  refreshAll();
+  var tabs = { matches: matchesTab, relocateme: relocatemeTab, sources: sourcesTab };
+  var DEFAULT_TAB = 'matches';
+
+  var router = (function () {
+    var started = {}; // tab name -> init() promise
+
+    function parseHash() {
+      var raw = location.hash.replace(/^#/, '');
+      var q = raw.indexOf('?');
+      var name = q === -1 ? raw : raw.slice(0, q);
+      return {
+        name: tabs[name] ? name : DEFAULT_TAB,
+        params: new URLSearchParams(q === -1 ? '' : raw.slice(q + 1))
+      };
+    }
+
+    function route() {
+      var r = parseHash();
+      Object.keys(tabs).forEach(function (name) {
+        var active = name === r.name;
+        qs('tab-' + name).hidden = !active;
+        qs('tablink-' + name).setAttribute('aria-selected', active ? 'true' : 'false');
+      });
+      if (!started[r.name]) started[r.name] = Promise.resolve(tabs[r.name].init());
+      if (tabs[r.name].show) {
+        started[r.name].then(function () {
+          // Skip if the user navigated elsewhere while init was loading.
+          if (parseHash().name === r.name) tabs[r.name].show(parseHash().params);
+        });
+      }
+    }
+
+    return {
+      route: route,
+      initialized: function (name) { return !!started[name]; }
+    };
+  })();
+
+  qs('run-now-btn').addEventListener('click', runNow);
+  // pushState (RelocateMe filter changes) fires no event; Back/Forward and tab clicks fire hashchange.
+  window.addEventListener('hashchange', router.route);
+
+  matchesTab.recordVisit();
+  loadLastRun();
+  router.route();
 })();
 </script>
 

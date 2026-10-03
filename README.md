@@ -43,10 +43,61 @@ All optional. Missing config means that feature silently does nothing (no crash)
 | Variable | Purpose |
 |---|---|
 | `JOBRADAR_CONTACT_EMAIL` | Put in the `User-Agent` header sent to every source (be a good citizen) |
+| `SUBSTACK_COOKIE` | Session cookie of a paid [The Global Move](https://relocateme.substack.com) subscriber — unlocks the full weekly job lists for the `relocateme-substack` source (see below) |
 | `SLACK_WEBHOOK_URL` | Enables the Slack notification channel |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | Enables the Telegram notification channel |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | Mail server for the email channel (also needs `app.notify.email.enabled=true` and `JOBRADAR_NOTIFY_EMAIL`, both off by default) |
 | `SERVER_PORT` | HTTP port for the dashboard/API (default 8080) |
+
+### Unlocking the paid Substack weekly job lists
+
+The `relocateme-substack` source ingests The Global Move's weekly hand-curated job
+issues (~30 backend roles/week). Those issues are paid-subscriber-only; anonymously the
+adapter can only report how many roles each issue holds ("advertises 33 back end, 12
+full stack role(s) behind the paywall"). If you subscribe ($15/mo), export your own
+session cookie once:
+
+1. Log in to `relocateme.substack.com` in your browser.
+2. DevTools → Application/Storage → Cookies → `https://relocateme.substack.com`.
+3. Copy the `substack.sid` value and set `SUBSTACK_COOKIE="substack.sid=<value>"`.
+
+The cookie is sent only to `relocateme.substack.com` (`app.http.auth.cookies` maps
+cookies per host). The adapter self-verifies every issue against the per-section totals
+the issue advertises about itself, so the logs tell you exactly which state you're in:
+
+| Log | Meaning |
+|---|---|
+| `... all advertised section totals met` | Full body parsed; every advertised role extracted |
+| `WARN ... parsed fewer entries than the issue advertises` | Markup drift or truncated body — parser needs a look |
+| `WARN ... cookie has likely expired or is malformed` | Cookie was sent but Substack served the preview — re-export it |
+| `INFO ... advertises N ... behind the paywall` | No cookie configured; inventory only |
+
+### Weekly issue archive
+
+Separately from the match feed, every weekly issue is archived in full (all sections,
+one row per entry per issue) into `relocateme_issue` and `relocateme_job`. A daily pass
+(`app.relocateme-archive.cron`) picks up new weeks; `--app.archive-relocateme=true` runs
+one backfill and exits. Issues stored as `PREVIEW` (paid issue, no working cookie) are
+re-fetched once `SUBSTACK_COOKIE` is set; `FULL` issues are never re-fetched.
+
+Read API (all filters optional, combinable):
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/relocateme/issues` | Every issue, newest first, with job count per section |
+| `GET /api/relocateme/sections` | Section name -> job count across all issues |
+| `GET /api/relocateme/jobs?week=&section=&q=&keyword=&country=&remote=&region=&page=&size=` | Paged jobs (`size` 1-200, default 50), newest issue first, newsletter order within it |
+| `GET /api/relocateme/jobs/{id}` | One job |
+
+`country` takes a code or a name (`NL`, `Netherlands`, `UK`) and also matches
+multi-country jobs; `keyword` matches one whole job keyword; `q` searches title,
+company, location and keywords; `region` is a substring of the remote region (`EMEA`).
+
+```sql
+select i.week_number, j.section, j.title, j.company, j.location, j.apply_url
+from relocateme_job j join relocateme_issue i on i.id = j.issue_id
+order by i.week_number desc, j.section, j.position;
+```
 
 ## Run modes
 
@@ -55,6 +106,7 @@ All optional. Missing config means that feature silently does nothing (no crash)
 ./mvnw spring-boot:run -Dspring-boot.run.arguments=--app.run-once=true   # one pass, then exit
 ./mvnw spring-boot:run -Dspring-boot.run.arguments=--app.dry-run=true    # fetch + match + log, no writes/notifications
 ./mvnw spring-boot:run -Dspring-boot.run.arguments=--app.detect-ats=https://careers.example.com/
+./mvnw spring-boot:run -Dspring-boot.run.arguments=--app.archive-relocateme=true  # backfill weekly archive, then exit
 ```
 
 Or against the packaged jar (`./mvnw package` first):

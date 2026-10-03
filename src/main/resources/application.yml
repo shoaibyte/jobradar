@@ -50,6 +50,8 @@ app:
   run-once: false
   dry-run: false
   detect-ats: ""
+  # --app.archive-relocateme=true: one full backfill of relocateme_issue/relocateme_job, then exit
+  archive-relocateme: false
   # Set to false only in test property sources -- keeps @SpringBootTest context loads
   # from firing a real network ingest pass on every test run.
   startup-run:
@@ -72,6 +74,12 @@ app:
     robots-txt:
       enabled: true
       cache-ttl-minutes: 60
+    auth:
+      # host -> Cookie header sent on every request to that host. For content the
+      # deployment owner is entitled to (e.g. a paid Substack subscription): export the
+      # browser session cookie ("substack.sid=...") into SUBSTACK_COOKIE. Blank = off.
+      cookies:
+        "[relocateme.substack.com]": ${SUBSTACK_COOKIE:}
 
   sources:
     arbeitnow:
@@ -87,6 +95,21 @@ app:
       max-listing-pages: 5
       categories: [back-end, full-stack, lead-developer, team-lead, other]
       excluded-slugs: [the-global-move, micro1]
+    relocateme-substack:
+      enabled: true
+      base-url: https://relocateme.substack.com
+      archive-page-size: 20
+      max-posts: 6
+      lookback-days: 45
+      # Weekly job-list issues are matched by slug prefix or Substack tag.
+      post-slug-prefixes: [weekly-hand-curated-tech-jobs, work-from-anywhere-tech-jobs]
+      post-tags: ["Relocation-friendly jobs"]
+      # Newsletter body sections whose entries are collected wholesale; the downstream
+      # match engine does the Java/Go/visa gating.
+      sections: ["Back End", "Full Stack"]
+      # Used only if the section headings disappear (layout drift): sweep every job
+      # entry in the post and keep backend-looking ones.
+      fallback-title-pattern: "(?i)back.?end|server[- ]side|platform engineer|software engineer|\\bjava\\b|golang|\\bgo\\b|python|node(\\.js)?|kotlin|scala|elixir|rust"
     picnic:
       enabled: true
       base-url: https://jobs.picnic.app/en/vacancies
@@ -99,6 +122,13 @@ app:
     lever:
       enabled: false
       base-url: https://api.lever.co/v0/postings
+
+  # Full archive of every weekly issue (all sections) into relocateme_issue / relocateme_job.
+  # Reuses app.sources.relocateme-substack.base-url and archive-page-size.
+  relocateme-archive:
+    issue-title-pattern: "(?i)^weekly hand-curated tech jobs with relocation"
+    # Daily; already-FULL issues are skipped, so this only picks up new weeks. "-" disables.
+    cron: "0 30 9 * * *"
 
   match:
     role-gate:

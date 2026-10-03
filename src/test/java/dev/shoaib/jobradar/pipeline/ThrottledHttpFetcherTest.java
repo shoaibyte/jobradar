@@ -36,7 +36,8 @@ class ThrottledHttpFetcherTest {
     }
 
     private ThrottledHttpFetcher newFetcher(long perHostMinIntervalMs, boolean robotsEnabled) {
-        return new ThrottledHttpFetcher("JobRadar-test", perHostMinIntervalMs, 5, 5, robotsEnabled, 60);
+        return new ThrottledHttpFetcher("JobRadar-test", new HttpAuthProperties(java.util.Map.of()),
+            perHostMinIntervalMs, 5, 5, robotsEnabled, 60);
     }
 
     @Test
@@ -103,5 +104,23 @@ class ThrottledHttpFetcherTest {
         long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
         assertThat(elapsedMs).isGreaterThanOrEqualTo(280);
+    }
+
+    @Test
+    void decodesUtf8WhenNoCharsetIsDeclared() {
+        byte[] body = "\uFEFFRole\n[Dev](https://x.test) ✅ Málaga".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM);
+
+        assertThat(ThrottledHttpFetcher.decode(body, headers)).isEqualTo("Role\n[Dev](https://x.test) ✅ Málaga");
+    }
+
+    @Test
+    void honoursDeclaredCharset() {
+        byte[] body = "Málaga".getBytes(java.nio.charset.StandardCharsets.ISO_8859_1);
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.parseMediaType("text/plain; charset=ISO-8859-1"));
+
+        assertThat(ThrottledHttpFetcher.decode(body, headers)).isEqualTo("Málaga");
     }
 }

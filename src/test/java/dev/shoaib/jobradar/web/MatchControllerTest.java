@@ -14,7 +14,6 @@ import dev.shoaib.jobradar.core.persistence.JobRecordRepository;
 import dev.shoaib.jobradar.core.persistence.MatchResultEntity;
 import dev.shoaib.jobradar.core.persistence.MatchResultRepository;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -59,9 +58,15 @@ class MatchControllerTest {
         job.setUrl("https://example.com/job/1");
         job.setVisaFlag(true);
         job.setSalaryRaw("8-12M JPY");
+        job.setSource("greenhouse:paypay");
+        job.setTechTags("[\"java\",\"kotlin\"]");
+        job.setStatus(JobStatus.ACTIVE);
+        job.setPostedAt("2026-08-04T09:00:00Z");
+        job.setFirstSeen("2026-08-05T00:00:00Z");
+        job.setLastSeen("2026-08-06T00:00:00Z");
 
         when(matchResultRepository.search(isNull(), isNull(), isNull())).thenReturn(List.of(match));
-        when(jobRecordRepository.findById(1)).thenReturn(Optional.of(job));
+        when(jobRecordRepository.findAllById(List.of(1))).thenReturn(List.of(job));
 
         mockMvc.perform(get("/api/matches"))
             .andExpect(status().isOk())
@@ -73,7 +78,86 @@ class MatchControllerTest {
             .andExpect(jsonPath("$[0].reasons[0]").value("java-in-title"))
             .andExpect(jsonPath("$[0].reasons[1]").value("relocation-benefit"))
             .andExpect(jsonPath("$[0].visaFlag").value(true))
-            .andExpect(jsonPath("$[0].salaryRaw").value("8-12M JPY"));
+            .andExpect(jsonPath("$[0].salaryRaw").value("8-12M JPY"))
+            .andExpect(jsonPath("$[0].source").value("greenhouse:paypay"))
+            .andExpect(jsonPath("$[0].techTags[1]").value("kotlin"))
+            .andExpect(jsonPath("$[0].status").value("ACTIVE"))
+            .andExpect(jsonPath("$[0].postedAt").value("2026-08-04T09:00:00Z"))
+            .andExpect(jsonPath("$[0].firstSeen").value("2026-08-05T00:00:00Z"))
+            .andExpect(jsonPath("$[0].lastSeen").value("2026-08-06T00:00:00Z"));
+    }
+
+    @Test
+    void defaultsToNewestCollectedFirstWithScoreAsTiebreak() throws Exception {
+        // Repository order is score desc; the default sort must override it.
+        givenMatches(
+            row(1, 9.0, "2026-08-01T10:00:00Z", null),
+            row(2, 4.0, "2026-10-01T06:48:34.4188Z", null),
+            // 10 microseconds after #2, but "...4188Z" > "...41881Z" as text, so a string
+            // comparison would wrongly put #2 first. Pins Instant-based ordering.
+            row(3, 5.0, "2026-10-01T06:48:34.41881Z", null),
+            row(4, 7.0, "2026-10-01T06:48:34.41881Z", null));
+
+        mockMvc.perform(get("/api/matches"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].jobId").value(org.hamcrest.Matchers.contains(4, 3, 2, 1)));
+    }
+
+    @Test
+    void sortByScoreKeepsScoreOrder() throws Exception {
+        givenMatches(
+            row(1, 9.0, "2026-08-01T10:00:00Z", null),
+            row(2, 4.0, "2026-10-01T00:00:00Z", null));
+
+        mockMvc.perform(get("/api/matches").param("sort", "score"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].jobId").value(org.hamcrest.Matchers.contains(1, 2)));
+    }
+
+    @Test
+    void sortByPostedPutsMissingPostedDateLast() throws Exception {
+        givenMatches(
+            row(1, 9.0, "2026-10-01T00:00:00Z", null),
+            row(2, 4.0, "2026-08-01T00:00:00Z", "2026-07-30T00:00:00Z"),
+            row(3, 5.0, "2026-08-01T00:00:00Z", "2026-07-31T00:00:00Z"));
+
+        mockMvc.perform(get("/api/matches").param("sort", "POSTED"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[*].jobId").value(org.hamcrest.Matchers.contains(3, 2, 1)));
+    }
+
+    @Test
+    void invalidSortReturns400() throws Exception {
+        mockMvc.perform(get("/api/matches").param("sort", "nonsense"))
+            .andExpect(status().isBadRequest());
+    }
+
+    private record Row(MatchResultEntity match, JobRecordEntity job) {}
+
+    private static Row row(int id, double score, String firstSeen, String postedAt) {
+        MatchResultEntity match = new MatchResultEntity();
+        match.setJobId(id);
+        match.setScore(score);
+        match.setStrength(MatchStrength.MATCH);
+        match.setReasons("[]");
+        JobRecordEntity job = new JobRecordEntity();
+        job.setId(id);
+        job.setTitle("Job " + id);
+        job.setUrl("https://example.com/job/" + id);
+        job.setFirstSeen(firstSeen);
+        job.setPostedAt(postedAt);
+        return new Row(match, job);
+    }
+
+    /** Stubs the repository to return the rows in score-desc order, as the real query does. */
+    private void givenMatches(Row... rows) {
+        List<Row> byScore = java.util.Arrays.stream(rows)
+            .sorted(java.util.Comparator.comparingDouble((Row r) -> r.match().getScore()).reversed())
+            .toList();
+        when(matchResultRepository.search(isNull(), isNull(), isNull()))
+            .thenReturn(byScore.stream().map(Row::match).toList());
+        when(jobRecordRepository.findAllById(byScore.stream().map(r -> r.match().getJobId()).toList()))
+            .thenReturn(byScore.stream().map(Row::job).toList());
     }
 
     @Test
@@ -97,7 +181,7 @@ class MatchControllerTest {
         match.setReasons("[]");
 
         when(matchResultRepository.search(isNull(), isNull(), isNull())).thenReturn(List.of(match));
-        when(jobRecordRepository.findById(404)).thenReturn(Optional.empty());
+        when(jobRecordRepository.findAllById(List.of(404))).thenReturn(List.of());
 
         mockMvc.perform(get("/api/matches"))
             .andExpect(status().isOk())
