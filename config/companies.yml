@@ -31,7 +31,9 @@ companies:
 
   # ---------------- Austria -- RWR card ----------------
   - { name: Bitpanda,     ats: greenhouse,  token: bitpanda,     priority: HIGH }                            # Vienna; non-senior "Software Engineer, Java" and "Software Engineer, Golang" reqs live at check; visa support advertised per posting
-  - { name: Journi,       ats: personio,    token: journi-gmbh }                                             # Vienna JVM backend; 2026 loop closed at the seniority bar -- keep warm, act on mid-level reqs
+  # 2026-10-09: journi-gmbh.jobs.personio.de now 404s on every path (feed and board), so the Personio account is gone or renamed.
+  # Re-enable once the new board is found (run with --app.detect-ats=<careers URL>).
+  # - { name: Journi,       ats: personio,    token: journi-gmbh }                                             # Vienna JVM backend; 2026 loop closed at the seniority bar -- keep warm, act on mid-level reqs
 
   # ---------------- Baltics / Nordics ----------------
   - { name: Wolt,         ats: greenhouse,  token: wolt,         relocation: COMPANY_WIDE, priority: HIGH }  # Kotlin/Go/Scala/Python backend; Helsinki/Berlin relocation package is standard
