@@ -60,7 +60,7 @@ class YamlCompanyRegistryTest {
 
         List<CompanyEntry> personio = registry.byAts("personio");
         assertThat(personio).extracting(CompanyEntry::token)
-            .containsExactlyInAnyOrder("verimi", "journi-gmbh");
+            .containsExactlyInAnyOrder("verimi");
 
         // No live company is wired to Lever yet.
         assertThat(registry.byAts("lever")).isEmpty();
